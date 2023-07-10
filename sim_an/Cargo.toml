@@ -7,3 +7,8 @@ edition = "2021"
 
 [dependencies]
 rand = "0.8.5"
+itertools = "0.11.0"
+permutator = "0.4.3"
+[[test]]
+name = "validity_check_test.rs"
+path = "src/tests/"
