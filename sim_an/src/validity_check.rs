@@ -40,7 +40,7 @@ pub fn deconstruct_call(call:i32,call_details : &[[i32;8usize]; NCALLS]) -> (i32
         start_upper,
         end_lower,
         end_upper */
-    /*
+    /*s
     println!("{:?}",call_details[(call-1) as usize]);
     println!("
     origin: {}
