@@ -1,4 +1,4 @@
-use std::cmp::{min,max};
+use std::{cmp::{min,max}, collections::HashMap};
 use crate::constants::{NVEHICLES,NNODES,NCALLS,TRAVEL_TIME_SIZE,SOLUTION_SIZE};
 
 #[derive(Debug)]
@@ -13,25 +13,28 @@ pub enum CorrectnessError<'a>{ // TODO: Don't need to return the solution here..
     CallTooManyTimes{call:i32, solution:&'a [i32;SOLUTION_SIZE]},
     PickUpTooLate{vehicle_idx:usize, call:i32,car_time:i32,arrival_time:i32,start_upper:i32, solution:&'a [i32;SOLUTION_SIZE]},
     DeliverTooLate{vehicle_idx:usize,call:i32,car_time:i32,arrival_time:i32,end_upper:i32, solution:&'a [i32;SOLUTION_SIZE]},
+    NoPath{},
 }
 
 
-fn a_to_b_info(vehicle_idx:usize,a:i32,b:i32,travel_costs: &[[i32;4usize];TRAVEL_TIME_SIZE]) -> [i32;4]{
-    let a_prime = min(a-1,b-1)as usize;
-    let b_prime = max(a-1,b-1) as usize;
-    let node_a_start_idx = NVEHICLES * (( (NNODES-a_prime)..NNODES ).sum::<usize>() + a_prime ); // Takes you to the beginning of the section for node "a".
-    let node_b_start_idx = NVEHICLES * ( b_prime-a_prime); // Takes you to the beginning of the the node "b" section *within* the node "a" section.
-    let vehicle_start_idx: usize = vehicle_idx%NVEHICLES ; // Takes yopu to the line corresponding to the vehicle in the node "b" sectionn.
-    let index:usize = node_a_start_idx + node_b_start_idx + vehicle_start_idx;
-    travel_costs[index]
+fn a_to_b_info(vehicle_idx:usize,a:i32,b:i32,travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>) -> Option<&(i32,i32)>{
+    let a_prime = min(a,b);
+    let b_prime = max(a,b);
+    let vehicle = vehicle_idx as i32 +1;
+    travel_costs.get(&(vehicle,a_prime,b_prime))
 }
-pub fn a_to_b_time(vehicle_idx:usize,a:i32,b:i32,travel_costs: &[[i32;4usize];TRAVEL_TIME_SIZE]) -> i32{
-    a_to_b_info(vehicle_idx, a, b, travel_costs)[2]
+pub fn a_to_b_time(vehicle_idx:usize,a:i32,b:i32,travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>) -> Option<i32>{
+    match a_to_b_info(vehicle_idx, a, b, travel_costs){
+        Some(v) => Some(v.0),
+        None => None
+    }
 }
-pub fn a_to_b_cost(vehicle_idx:usize,a:i32,b:i32,travel_costs: &[[i32;4usize];TRAVEL_TIME_SIZE]) -> i32{
-    a_to_b_info(vehicle_idx, a, b, travel_costs)[3]
+pub fn a_to_b_cost(vehicle_idx:usize,a:i32,b:i32,travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>) -> Option<i32>{
+    match a_to_b_info(vehicle_idx, a, b, travel_costs){
+        Some(v) => Some(v.1),
+        None => None
+    }
 }
-
 pub fn deconstruct_vehicle(vehicle_idx:usize,vehicle_details : &[[i32;3usize]; NVEHICLES]) -> (i32,i32,i32){
     // Home, start_time, capacity.
     (vehicle_details[vehicle_idx][0],vehicle_details[vehicle_idx][1],vehicle_details[vehicle_idx][2])
@@ -101,7 +104,7 @@ pub fn correctness_check<'a>(
         solution : &'a [i32;SOLUTION_SIZE],
         vehicle_details : &'a [[i32;3usize]; NVEHICLES],
         call_details : &'a [[i32;8usize]; NCALLS],
-        travel_costs: &'a [[i32;4usize];TRAVEL_TIME_SIZE],
+        travel_costs: &'a HashMap<(i32,i32,i32),(i32,i32)>,
         node_costs: &'a [[i32;5usize];NCALLS*NVEHICLES]
     ) -> Result<i32,CorrectnessError<'a>> {
     
@@ -159,8 +162,14 @@ pub fn correctness_check<'a>(
             _ => ()
         }
 
-        let moving_time = a_to_b_time(car_idx,car_pos,origin,travel_costs);
-        let moving_cost = a_to_b_cost(car_idx,car_pos,origin,travel_costs);
+        let moving_time = match a_to_b_time(car_idx,car_pos,origin,travel_costs){
+            Some(v) => v,
+            None => return Err(CorrectnessError::NoPath{}),
+        };
+        let moving_cost = match a_to_b_cost(car_idx,car_pos,origin,travel_costs){
+            Some(v) => v,
+            None => return Err(CorrectnessError::NoPath{}),
+        };
 
         // Check if pick-up or deliver. If already delivered, can not be called again.
         match call_counter[(call-1) as usize]{

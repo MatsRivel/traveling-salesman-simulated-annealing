@@ -57,6 +57,9 @@ fn main(){
     println!(" ################## Recursive size: {}\n ################## Static Size: {}", TRAVEL_TIME_SIZE, NNODES*NNODES*NVEHICLES);
     let data_struct: AllData = prepare_data();
     let (vehicle_details, valid_calls, call_details, travel_costs, node_costs) = data_struct.deconstruct();
+    // Note to self: travel_costs now only considers combinations that COULD occur, as well as only reading through non-redundant data.
+    // This allows for much larger solution spaces to be considerer quickly.
+    // Currently still only runs naive solutions.
     //correct_adaptive_input_validity_test(data_struct);
     println!("Current array capacity: {TRAVEL_TIME_SIZE}");
     // Generate any valid solution.
@@ -66,5 +69,4 @@ fn main(){
         &travel_costs,
         &node_costs
         );
-    println!("\n_____ {:?} _____\n", valid_solution);
 }

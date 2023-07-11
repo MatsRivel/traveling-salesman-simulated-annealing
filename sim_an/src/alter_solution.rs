@@ -31,7 +31,7 @@ fn swap_three_random_calls(solution:&[i32;SOLUTION_SIZE])  -> [i32;SOLUTION_SIZE
 pub fn brute_force_solve(
     vehicle_details : &[[i32;3usize]; NVEHICLES],
     call_details : &[[i32;8usize]; NCALLS],
-    travel_costs: &[[i32;4usize];TRAVEL_TIME_SIZE],
+    travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
     node_costs: &[[i32;5usize];NCALLS*NVEHICLES]
     ) -> [i32;SOLUTION_SIZE]{
         /*This solver ran for 17 hours and could still only finish about ~1% of the space. */
@@ -79,7 +79,7 @@ pub fn brute_force_solve(
 pub fn generate_any_valid_solution(
     vehicle_details : &[[i32;3usize]; NVEHICLES],
     call_details : &[[i32;8usize]; NCALLS],
-    travel_costs: &[[i32;4usize];TRAVEL_TIME_SIZE],
+    travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
     node_costs: &[[i32;5usize];NCALLS*NVEHICLES]
     ) -> [i32;SOLUTION_SIZE]{
 
@@ -152,7 +152,7 @@ struct Info{
 
 }
 impl Info{
-    fn new(call_count: i32, vehicle_idx:usize, car_pos:[i32;NVEHICLES], car_times:[i32;NVEHICLES], call:i32,node_costs:&[[i32;5usize];NCALLS*NVEHICLES], call_details:&[[i32;8usize]; NCALLS],travel_costs:&[[i32;4usize];TRAVEL_TIME_SIZE]) -> Option<Self>{
+    fn new(call_count: i32, vehicle_idx:usize, car_pos:[i32;NVEHICLES], car_times:[i32;NVEHICLES], call:i32,node_costs:&[[i32;5usize];NCALLS*NVEHICLES], call_details:&[[i32;8usize]; NCALLS],travel_costs:&HashMap<(i32,i32,i32),(i32,i32)>) -> Option<Self>{
         let from_node = car_pos[vehicle_idx];
         let current_time = car_times[vehicle_idx];
         let (mut node_time, mut node_cost, mut to_node, mut _call_size, mut cost_of_not_deliver, mut lower_bound, mut upper_bound) = (0i32,0i32,0i32,0i32, 0i32, 0i32, 0i32); 
@@ -168,7 +168,11 @@ impl Info{
             _ => return None
         }
         let total_cost = node_cost + cost_of_not_deliver;
-        let potential_time = current_time + node_time + a_to_b_time(vehicle_idx, from_node, to_node, travel_costs);
+        let ab_time =  match a_to_b_time(vehicle_idx, from_node, to_node, travel_costs){
+            Some(v) => v,
+            None => return None
+        };
+        let potential_time = current_time + node_time + ab_time; 
         let total_time = max(lower_bound, potential_time);
         let time_delta = (total_time - lower_bound).abs();
         return Some(Info{to_node, total_time, time_delta, upper_bound, total_cost});
@@ -195,7 +199,7 @@ impl Info{
 pub fn naive_solve(
     vehicle_details : &[[i32;3usize]; NVEHICLES],
     call_details : &[[i32;8usize]; NCALLS],
-    travel_costs: &[[i32;4usize];TRAVEL_TIME_SIZE],
+    travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
     node_costs: &[[i32;5usize];NCALLS*NVEHICLES]
     ) -> [i32;SOLUTION_SIZE]{
     let mut total_cost:i32 = 0;

@@ -1,4 +1,6 @@
-use crate::constants::{NCALLS, TRAVEL_TIME_SIZE,SOLUTION_SIZE};
+use std::collections::HashMap;
+
+use crate::constants::{NCALLS, SOLUTION_SIZE};
 use crate::validity_check::{a_to_b_time, deconstruct_call};
 
 pub fn correct_overcalling(solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
@@ -35,7 +37,7 @@ pub fn correct_overcalling(solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE
 
 }
 // TODO: Make func that goes through and tracks all cars, not just one. The earliest available car should get the first available call.
-pub fn correct_pickup_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, start_upper:i32, travel_costs: &[[i32;4usize];TRAVEL_TIME_SIZE],
+pub fn correct_pickup_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, start_upper:i32, travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
                              call_details : &[[i32;8usize]; NCALLS], solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
 
     // Get the 1st occurence of the call (the pick-up)
@@ -64,7 +66,7 @@ pub fn correct_pickup_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, st
             _ => ()
         }
         println!("________________ correct_pickup_too_late ________________");
-        let call_time:i32 = a_to_b_time(vehicle_idx,from_node,to_node,travel_costs); // Get the cost of going from idx to idx+1.
+        let call_time:i32 = a_to_b_time(vehicle_idx,from_node,to_node,travel_costs).expect("Can not fail, as only legal moves are considered."); // Get the cost of going from idx to idx+1.
         println!("Call_time: {}",call_time);
         current_time -= call_time;
     }
@@ -89,7 +91,7 @@ fn get_nth_occurrences(n_occurrence:usize, call:i32, solution:&[i32;SOLUTION_SIZ
         .map(|(idx,_)|idx)
         .nth(n_occurrence-1)
 }
-pub fn correct_deliver_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, end_upper:i32, travel_costs: &[[i32;4usize];TRAVEL_TIME_SIZE], solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
+pub fn correct_deliver_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, end_upper:i32, travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>, solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
     // Get the 2nd occurence of the call (the delivery)
     let initial_call_idx = get_nth_occurrences(2usize,call,solution).expect("\"correct_deliver_too_late(...)\": This unwrap should be unfalable, as this func is only called when the given call exists."); 
     let mut call_idx = initial_call_idx;
@@ -97,7 +99,7 @@ pub fn correct_deliver_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, e
     // Find the latest possible spot where picking up the call is possible.
     while current_time > end_upper{
         call_idx -= 1;
-        let call_time:i32 = a_to_b_time(vehicle_idx,solution[call_idx],solution[call_idx+1],travel_costs); // Get the cost of going from idx to idx+1.
+        let call_time:i32 = a_to_b_time(vehicle_idx,solution[call_idx],solution[call_idx+1],travel_costs).expect("Unwrap can not fail, as all moves havea legal start and end."); // Get the cost of going from idx to idx+1.
         current_time -= call_time;
     }
     // Move all calls from the desired position to the original position one step ahead, effective deleting the original call at its original position.

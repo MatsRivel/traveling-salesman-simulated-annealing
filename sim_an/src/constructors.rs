@@ -1,22 +1,35 @@
-use crate::constants::{NVEHICLES,NCALLS, TRAVEL_TIME_SIZE,SOLUTION_SIZE};
+use crate::constants::{NVEHICLES,NCALLS, TRAVEL_TIME_SIZE};
 use crate::constructors;
+use std::collections::HashMap;
 use std::convert::TryInto;
 use std::env;
 use std::path::Path;
 use std::fs::File;
 use std::io::{self, BufRead};
 
+
+trait DeconstructArray{
+    type Output;
+    fn deconstruct_array(&self) -> Self::Output;
+}
+impl DeconstructArray for [i32;5]{
+    type Output = (i32,i32,i32,i32,i32);
+    fn deconstruct_array(&self) -> Self::Output {
+        (self[0],self[1],self[2],self[3],self[4])
+    }
+}
+
 pub struct AllData{
     vehicle_details: [[i32; 3]; NVEHICLES],
     valid_calls: [[i32; NCALLS]; NVEHICLES],
     call_details: [[i32; 8]; NCALLS],
-    travel_costs: [[i32; 4]; TRAVEL_TIME_SIZE],
+    travel_costs: HashMap<(i32,i32,i32),(i32,i32)>,
     node_costs: [[i32; 5]; NCALLS*NVEHICLES]
 }
 
 impl AllData{
-    pub fn deconstruct(&self) -> ([[i32; 3]; NVEHICLES], [[i32; NCALLS]; NVEHICLES], [[i32; 8]; NCALLS], [[i32; 4]; TRAVEL_TIME_SIZE], [[i32; 5]; NCALLS*NVEHICLES] ){
-        (self.vehicle_details, self.valid_calls, self.call_details, self.travel_costs, self.node_costs)
+    pub fn deconstruct(&self) -> ([[i32; 3]; NVEHICLES], [[i32; NCALLS]; NVEHICLES], [[i32; 8]; NCALLS], HashMap<(i32,i32,i32),(i32,i32)>, [[i32; 5]; NCALLS*NVEHICLES] ){
+        (self.vehicle_details, self.valid_calls, self.call_details, self.travel_costs.clone(), self.node_costs) //Note: Find a way to avoid cloning?
     }
 }
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
@@ -55,14 +68,19 @@ pub fn construct_call_details(s:String) -> [i32;8usize] {
         ).skip(1)
         .collect::<Vec<i32>>().try_into().expect("Failed to convert Vec to [i32;8usize]")
 }
-pub fn construct_travel_costs(s:String) -> [i32;4usize]{
-    s.split(",")
+pub fn construct_travel_costs(s:String, used_nodes:[bool;NCALLS]) -> Option<[i32;5usize]>{
+    let arr:[i32;5usize] = s.split(",")
     .map(|s|
         s.to_string()
         .parse::<i32>()
         .expect("Could not convert str to i32 for TravelCost")
-    ).skip(1)
-    .collect::<Vec<i32>>().try_into().expect("Failed to convert Vec to [i32;5usize]")
+    )
+    .collect::<Vec<i32>>().try_into().expect("Failed to convert Vec to [i32;5usize]");
+
+    if used_nodes[arr[1usize] as usize] == false || used_nodes[arr[2usize] as usize] == false{
+        return None;
+    }
+    return Some(arr);
 }
 pub fn construct_node_costs(s:String) -> [i32;5usize] {
     s.split(",")
@@ -85,8 +103,7 @@ pub fn get_all_data(path:&Path) -> AllData{
     let mut call_details_idx = 0;
     let mut call_details: [[i32;8usize]; NCALLS] = [[-1i32;8usize]; NCALLS];
 
-    let mut travel_costs_idx = 0;
-    let mut travel_costs: [[i32;4usize];TRAVEL_TIME_SIZE] = [[-1i32;4usize];TRAVEL_TIME_SIZE];
+    let mut travel_costs:HashMap<(i32,i32,i32),(i32,i32)> = HashMap::new();
 
     let mut node_cost_idx = 0;
     let mut node_costs: [[i32;5usize];NCALLS*NVEHICLES] = [[-1i32;5usize];NCALLS*NVEHICLES];
@@ -102,7 +119,7 @@ pub fn get_all_data(path:&Path) -> AllData{
     };
     let mut info_idx = -1;
     // Prepare all arrays.
-    let mut temp_travel_count = 0; // TODO: Remove this.
+    let mut used_nodes: [bool;NCALLS] = [false;NCALLS];
     for result_line in line_buffer{
         let line = result_line.expect("Failed to unwrap result_line");
         if line.starts_with("%"){
@@ -115,21 +132,27 @@ pub fn get_all_data(path:&Path) -> AllData{
                 },
             4 => {  valid_calls[valid_calls_idx] = constructors::construct_valid_calls(line);
                     valid_calls_idx += 1;
-            },
+                },
             5 => {  call_details[call_details_idx] = constructors::construct_call_details(line);
+                    used_nodes[call_details[call_details_idx][0] as usize] = true;
+                    used_nodes[call_details[call_details_idx][1] as usize] = true;
                     call_details_idx += 1;
-            },
-            6 => {  travel_costs[travel_costs_idx] = constructors::construct_travel_costs(line);
-                    temp_travel_count += 1; // TODO: Remove this.
-                    travel_costs_idx += 1
-            },
+                },
+            6 => {  match constructors::construct_travel_costs(line,used_nodes){
+                        Some(v) => {
+                            let (vehicle, origin,destination,time,cost) = v.deconstruct_array();
+                            travel_costs.insert((vehicle, origin, destination),(time,cost));
+                        },
+                        None => ()
+            }
+
+                },
             7 => {  node_costs[node_cost_idx] = constructors::construct_node_costs(line);
                     node_cost_idx += 1;
-            },
+                },
             0 | 1 | 3 => {continue;},
             ..=-1 | 7.. => {panic!("Out of lines?")}
         }
     }
-    println!("Needed array capacity: {temp_travel_count}"); // TODO: Remove this.
     return  AllData{vehicle_details, valid_calls, call_details, travel_costs, node_costs};
 }
