@@ -102,14 +102,13 @@ pub fn get_all_data(path:&Path) -> AllData{
     };
     let mut info_idx = -1;
     // Prepare all arrays.
+    let mut temp_travel_count = 0; // TODO: Remove this.
     for result_line in line_buffer{
         let line = result_line.expect("Failed to unwrap result_line");
         if line.starts_with("%"){
             info_idx += 1;
-            //println!("\n{}",line);
             continue;
         }
-        //println!("{}",line);
         match info_idx {
             2 => {  vehicle_details[vehicle_details_idx] = constructors::construct_vehicle_details(line);
                     vehicle_details_idx+=1;
@@ -121,6 +120,7 @@ pub fn get_all_data(path:&Path) -> AllData{
                     call_details_idx += 1;
             },
             6 => {  travel_costs[travel_costs_idx] = constructors::construct_travel_costs(line);
+                    temp_travel_count += 1; // TODO: Remove this.
                     travel_costs_idx += 1
             },
             7 => {  node_costs[node_cost_idx] = constructors::construct_node_costs(line);
@@ -130,5 +130,6 @@ pub fn get_all_data(path:&Path) -> AllData{
             ..=-1 | 7.. => {panic!("Out of lines?")}
         }
     }
+    println!("Needed array capacity: {temp_travel_count}"); // TODO: Remove this.
     return  AllData{vehicle_details, valid_calls, call_details, travel_costs, node_costs};
 }

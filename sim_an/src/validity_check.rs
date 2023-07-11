@@ -1,4 +1,4 @@
-use std::{cmp::{min,max}};
+use std::cmp::{min,max};
 use crate::constants::{NVEHICLES,NNODES,NCALLS,TRAVEL_TIME_SIZE,SOLUTION_SIZE};
 
 #[derive(Debug)]
@@ -15,18 +15,23 @@ pub enum CorrectnessError<'a>{ // TODO: Don't need to return the solution here..
     DeliverTooLate{vehicle_idx:usize,call:i32,car_time:i32,arrival_time:i32,end_upper:i32, solution:&'a [i32;SOLUTION_SIZE]},
 }
 
-pub fn a_to_b_time(vehicle_idx:usize,a:i32,b:i32,travel_costs: &[[i32;4usize];TRAVEL_TIME_SIZE]) -> i32{
+
+fn a_to_b_info(vehicle_idx:usize,a:i32,b:i32,travel_costs: &[[i32;4usize];TRAVEL_TIME_SIZE]) -> [i32;4]{
     let a_prime = min(a-1,b-1)as usize;
     let b_prime = max(a-1,b-1) as usize;
-    let index:usize = vehicle_idx%NVEHICLES + (b_prime + a_prime*NNODES)*NVEHICLES;
-    travel_costs[index][2]
+    let node_a_start_idx = NVEHICLES * (( (NNODES-a_prime)..NNODES ).sum::<usize>() + a_prime ); // Takes you to the beginning of the section for node "a".
+    let node_b_start_idx = NVEHICLES * ( b_prime-a_prime); // Takes you to the beginning of the the node "b" section *within* the node "a" section.
+    let vehicle_start_idx: usize = vehicle_idx%NVEHICLES ; // Takes yopu to the line corresponding to the vehicle in the node "b" sectionn.
+    let index:usize = node_a_start_idx + node_b_start_idx + vehicle_start_idx;
+    travel_costs[index]
+}
+pub fn a_to_b_time(vehicle_idx:usize,a:i32,b:i32,travel_costs: &[[i32;4usize];TRAVEL_TIME_SIZE]) -> i32{
+    a_to_b_info(vehicle_idx, a, b, travel_costs)[2]
 }
 pub fn a_to_b_cost(vehicle_idx:usize,a:i32,b:i32,travel_costs: &[[i32;4usize];TRAVEL_TIME_SIZE]) -> i32{
-    let a_prime: usize = min(a-1,b-1)as usize;
-    let b_prime = max(a-1,b-1) as usize;
-    let index:usize = vehicle_idx%NVEHICLES + (b_prime + a_prime*NNODES)*NVEHICLES;
-    travel_costs[index][3]
+    a_to_b_info(vehicle_idx, a, b, travel_costs)[3]
 }
+
 pub fn deconstruct_vehicle(vehicle_idx:usize,vehicle_details : &[[i32;3usize]; NVEHICLES]) -> (i32,i32,i32){
     // Home, start_time, capacity.
     (vehicle_details[vehicle_idx][0],vehicle_details[vehicle_idx][1],vehicle_details[vehicle_idx][2])

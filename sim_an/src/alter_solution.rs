@@ -17,7 +17,7 @@ fn swap_call_with_random(call_idx:usize,solution:&[i32;SOLUTION_SIZE]) -> [i32;S
     output.swap(call_idx,other_idx);
     return output;
 }
-fn swap_two_random_calls(solution:&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
+pub fn swap_two_random_calls(solution:&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
     let call_idx = thread_rng().gen_range(0..(SOLUTION_SIZE));
     swap_call_with_random(call_idx,solution)
 }
@@ -75,6 +75,7 @@ pub fn brute_force_solve(
     println!("{} solutions tried, out of theoretical {} possible", solutions_tried, max_solutions);
     todo!("\nWhat if no possible solution exists?\n");
 }
+
 pub fn generate_any_valid_solution(
     vehicle_details : &[[i32;3usize]; NVEHICLES],
     call_details : &[[i32;8usize]; NCALLS],
