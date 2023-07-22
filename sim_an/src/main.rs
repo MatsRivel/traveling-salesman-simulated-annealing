@@ -10,7 +10,7 @@ use constants::{NVEHICLES, NCALLS,NNODES, SOLUTION_SIZE, TRAVEL_TIME_SIZE};
 use alter_solution::{generate_any_valid_solution};
 use std::path::Path;
 use crate::alter_solution::{brute_force_solve, naive_solve};
-
+use std::time::{Duration,Instant};
 fn get_predefined_solution(predef:Vec<i32>) -> [i32;SOLUTION_SIZE] {
     let mut sol:[i32;SOLUTION_SIZE] = [0i32;SOLUTION_SIZE];
     for (idx,element) in predef.iter().enumerate(){
@@ -53,20 +53,32 @@ fn correct_adaptive_input_validity_test(data_struct: AllData){
     assert!(correctness_check(&solution, &vehicle_details, &call_details, &travel_costs, &node_costs ).is_ok());
 }
 
+// Note to self: Would be more fair to read reduntant file but only keep non-redundant info.
+// Currently reading a different file seems a bit like a cheat.
 fn main(){
-    println!(" ################## Recursive size: {}\n ################## Static Size: {}", TRAVEL_TIME_SIZE, NNODES*NNODES*NVEHICLES);
+    //println!(" ################## Recursive size: {}\n ################## Static Size: {}", TRAVEL_TIME_SIZE, NNODES*NNODES*NVEHICLES);
+    let start = Instant::now();
     let data_struct: AllData = prepare_data();
     let (vehicle_details, valid_calls, call_details, travel_costs, node_costs) = data_struct.deconstruct();
     // Note to self: travel_costs now only considers combinations that COULD occur, as well as only reading through non-redundant data.
     // This allows for much larger solution spaces to be considerer quickly.
     // Currently still only runs naive solutions.
     //correct_adaptive_input_validity_test(data_struct);
-    println!("Current array capacity: {TRAVEL_TIME_SIZE}");
+    //println!("Current array capacity: {TRAVEL_TIME_SIZE}");
     // Generate any valid solution.
-    let valid_solution:[i32;SOLUTION_SIZE] = naive_solve(
+    let (valid_solution, total_cost) = naive_solve(
         &vehicle_details,
         &call_details,
         &travel_costs,
         &node_costs
         );
+    let runtime = (start.elapsed().as_nanos() as f32) / 10f32.powf(9f32);
+    println!("Total runtime: {:?}sec\nTotal Cost: ${}\nSolution:\n{:?}", runtime, total_cost, valid_solution);
+    
+    // Remove the below
+    use std::{thread, time};
+    let ten_millis = time::Duration::from_millis(5000);
+    let now = time::Instant::now();
+    
+    thread::sleep(ten_millis);
 }

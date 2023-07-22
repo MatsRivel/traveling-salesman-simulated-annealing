@@ -201,7 +201,7 @@ pub fn naive_solve(
     call_details : &[[i32;8usize]; NCALLS],
     travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
     node_costs: &[[i32;5usize];NCALLS*NVEHICLES]
-    ) -> [i32;SOLUTION_SIZE]{
+    ) -> ([i32;SOLUTION_SIZE],i32){
     let mut total_cost:i32 = 0;
     let mut current_solution:[i32;SOLUTION_SIZE] = [0i32;SOLUTION_SIZE];
     // (Call, IsPickUp): (vehicle_index, cost)
@@ -255,7 +255,7 @@ pub fn naive_solve(
         total_cost += cheapest_cost.unwrap(); // Already checked that this valie is Some(v), so .unwrap() is safe.
         //println!("Current solution: {:?}\nCXurrent total cost: {}",current_solution, total_cost );
     }
-    println!("\nnFinal solution: {:?}\n### Total Cost: {} ###",current_solution, total_cost );
-    return current_solution;
+    //println!("\nnFinal solution: {:?}\n### Total Cost: {} ###",current_solution, total_cost );
+    return (current_solution, total_cost);
 
 }
