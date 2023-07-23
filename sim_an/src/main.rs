@@ -6,11 +6,14 @@ mod alter_solution;
 
 use validity_check::correctness_check;
 use constructors::{AllData, get_all_data};
-use constants::{NVEHICLES, NCALLS,NNODES, SOLUTION_SIZE, TRAVEL_TIME_SIZE};
+use constants::{NVEHICLES, NCALLS,NNODES, SOLUTION_SIZE, TRAVEL_TIME_SIZE,MAX_RUNTIME_IN_SECONDS};
 use alter_solution::{generate_any_valid_solution};
-use std::path::Path;
-use crate::alter_solution::{brute_force_solve, naive_solve};
+use std::{path::Path, panic};
+use crate::{alter_solution::{brute_force_solve, naive_solve, randomly_improve_solution}, constants::N_THREADS};
 use std::time::{Duration,Instant};
+use rayon::prelude::{self, IntoParallelIterator, ParallelIterator};
+
+
 fn get_predefined_solution(predef:Vec<i32>) -> [i32;SOLUTION_SIZE] {
     let mut sol:[i32;SOLUTION_SIZE] = [0i32;SOLUTION_SIZE];
     for (idx,element) in predef.iter().enumerate(){
@@ -19,7 +22,7 @@ fn get_predefined_solution(predef:Vec<i32>) -> [i32;SOLUTION_SIZE] {
     return sol;
 }
 fn prepare_data()->AllData{
-    let base_path = r"C:\Users\rivelandm\OneDrive - NOV Inc\Documents\Other\traveling-salesman-simulated-annealing\sim_an\src\";
+    let base_path = r"C:\Users\Mats\OneDrive - University of Bergen\Documents\Rust Stuff\traveling-salesman-simulated-annealing\traveling-salesman-simulated-annealing\sim_an\src\";
     let file_name = match (NVEHICLES,NCALLS){
         (1,2) => r"Call_2_Vehicle_1_Custom.txt",
         (2,4) => r"Call_4_Vehicle_2_Custom.txt",
@@ -52,7 +55,6 @@ fn correct_adaptive_input_validity_test(data_struct: AllData){
     };
     assert!(correctness_check(&solution, &vehicle_details, &call_details, &travel_costs, &node_costs ).is_ok());
 }
-//
 // Note to self: Would be more fair to read reduntant file but only keep non-redundant info.
 // Currently reading a different file seems a bit like a cheat.
 fn main(){
@@ -66,19 +68,33 @@ fn main(){
     //correct_adaptive_input_validity_test(data_struct);
     //println!("Current array capacity: {TRAVEL_TIME_SIZE}");
     // Generate any valid solution.
-    let (valid_solution, total_cost) = naive_solve(
-        &vehicle_details,
-        &call_details,
-        &travel_costs,
-        &node_costs
-        );
+    println!("travel_costs size: {}", travel_costs.len());
+    let (mut best_solution, mut lowest_cost) = naive_solve(
+                                                            &vehicle_details,
+                                                            &call_details,
+                                                            &travel_costs,
+                                                            &node_costs
+                                                        );
     let runtime = (start.elapsed().as_nanos() as f32) / 10f32.powf(9f32);
-    println!("Total runtime: {:?}sec\nTotal Cost: ${}\nSolution:\n{:?}", runtime, total_cost, valid_solution);
-    
-    // Remove the below
-    use std::{thread, time};
-    let ten_millis = time::Duration::from_millis(5000);
-    let now = time::Instant::now();
-    
-    thread::sleep(ten_millis);
+    println!("Total runtime: {:?}sec\nTotal Cost: ${}\nSolution:\n{:?}", runtime, lowest_cost, best_solution);
+    let old_cost = lowest_cost;
+    // Time to improve the solution:
+    // randomly_improve_solution(&best_solution,&lowest_cost, &vehicle_details, &call_details, &travel_costs, &node_costs)
+    let changed_solutions: Vec<Option<([i32;SOLUTION_SIZE], i32)>> = (0..N_THREADS)
+        .into_par_iter()
+        .map(|_| randomly_improve_solution(&best_solution,&lowest_cost, &vehicle_details, &call_details, &travel_costs, &node_costs)).collect();
+    for potential_solution in changed_solutions.iter() {
+        let (sol,val) = match potential_solution{
+            None => continue,
+            Some((sol,val)) => (*sol,*val)
+        };
+        if val < lowest_cost {
+            best_solution = sol;
+            lowest_cost = val;
+        }
+    }
+    println!("\nImproving:\n");
+    let runtime2 = (start.elapsed().as_nanos() as f32) / 10f32.powf(9f32);
+    println!("Total runtime: {:?}sec\nTotal Cost: ${}\nSolution:\n{:?}", runtime2, lowest_cost, best_solution);
+    println!("Cost improvement: ${:?} cheaper after running for {:?}s longer", old_cost - lowest_cost, runtime2-runtime);
 }
