@@ -11,6 +11,7 @@ use permutator::{Permutation, HeapPermutationIterator};
 use std::time::{Duration, Instant};
 use std::collections::HashMap;
 use std;
+
 fn swap_call_with_random(call_idx:usize,solution:&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
     let mut output: [i32;SOLUTION_SIZE] = solution.clone();
     let other_idx = thread_rng().gen_range(0..(SOLUTION_SIZE));

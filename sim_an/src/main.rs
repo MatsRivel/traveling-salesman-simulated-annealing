@@ -7,7 +7,7 @@ mod alter_solution;
 use validity_check::correctness_check;
 use constructors::{AllData, get_all_data};
 use constants::{NVEHICLES, NCALLS,NNODES, SOLUTION_SIZE, TRAVEL_TIME_SIZE};
-use alter_solution::{generate_any_valid_solution};
+use alter_solution::generate_any_valid_solution;
 use std::path::Path;
 use crate::alter_solution::{brute_force_solve, naive_solve};
 
@@ -19,7 +19,7 @@ fn get_predefined_solution(predef:Vec<i32>) -> [i32;SOLUTION_SIZE] {
     return sol;
 }
 fn prepare_data()->AllData{
-    let base_path = r"C:\Users\rivelandm\OneDrive - NOV Inc\Documents\Other\traveling-salesman-simulated-annealing\sim_an\src\";
+    let base_path = r"C:\Users\Mats\Documents\GitHub\traveling-salesman-simulated-annealing\sim_an\src\";
     let file_name = match (NVEHICLES,NCALLS){
         (1,2) => r"Call_2_Vehicle_1_Custom.txt",
         (2,4) => r"Call_4_Vehicle_2_Custom.txt",
