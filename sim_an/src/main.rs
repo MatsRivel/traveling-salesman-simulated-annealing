@@ -52,7 +52,7 @@ fn correct_adaptive_input_validity_test(data_struct: AllData){
     };
     assert!(correctness_check(&solution, &vehicle_details, &call_details, &travel_costs, &node_costs ).is_ok());
 }
-
+//
 // Note to self: Would be more fair to read reduntant file but only keep non-redundant info.
 // Currently reading a different file seems a bit like a cheat.
 fn main(){
