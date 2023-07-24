@@ -4,7 +4,7 @@ use crate::constants::{NVEHICLES,NCALLS, TRAVEL_TIME_SIZE,SOLUTION_SIZE, MAX_RUN
 
 use rand::prelude::Distribution;
 use rand::{thread_rng, Rng};
-use std::cmp::{min, max};
+use std::cmp::{min, max, Ordering};
 use std::fmt::format;
 use std::io;
 use std::thread::current;
@@ -13,6 +13,120 @@ use permutator::{Permutation, HeapPermutationIterator};
 use std::time::{Duration, Instant};
 use std::collections::HashMap;
 use std;
+
+fn get_move_costs(
+    solution: &[i32;SOLUTION_SIZE],
+    vehicle_details : &[[i32;3usize]; NVEHICLES],
+    call_details : &[[i32;8usize]; NCALLS],
+    travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
+    node_costs: &[[i32;5usize];NCALLS*NVEHICLES]
+    ) -> Option<[Option<(i32,usize)>;SOLUTION_SIZE]>{
+
+    let mut total_cost:i32 = 0;
+    let mut car_pos = [0i32;NVEHICLES];
+    let mut car_times = [0i32;NVEHICLES];
+    let mut cost_order: [Option<(i32,usize)>; SOLUTION_SIZE] = [None;SOLUTION_SIZE];
+    for vehicle_idx in 0..NVEHICLES{
+        let (vehicle_home, vehicle_start, _ ) = deconstruct_vehicle(vehicle_idx, vehicle_details);
+        car_pos[vehicle_idx] = vehicle_home;
+        car_times[vehicle_idx] = vehicle_start;
+    }
+    let mut call_counter = [0;NCALLS];
+    for (call_idx, &call) in solution.iter().enumerate(){
+        let mut cheapest_vehicle:Option<usize> = None;
+        let mut cheapest_call:Option<usize> = None;
+        let mut cheapest_cost:Option<i32> = None;
+        let mut cheapest_time:Option<i32> = None;
+        let mut cheapest_to_node:Option<i32> = None;
+        let mut cheapest_time_delta:Option<i32> = None;
+        for vehicle_idx in 0..NVEHICLES{
+            let possible_informant:Option<Info> = Info::new(call_counter[call as usize-1], vehicle_idx, car_pos, car_times, call as i32,node_costs, call_details,travel_costs);
+            let informant = match possible_informant {
+                Some(v) => v,
+                None => continue // If no valid data, leave
+            };
+            if informant.is_faster(cheapest_time_delta) || cheapest_call.is_none(){
+                cheapest_vehicle = Some(vehicle_idx);
+                if cheapest_call.is_some(){
+                    call_counter[cheapest_call.unwrap()-1] -= 1;
+                }
+                cheapest_call = Some(call as usize);
+                call_counter[call as usize-1] += 1;
+                cheapest_cost = Some(0); // TODO: Temporary 0. Should be removed later, when we care about cost.
+                (cheapest_to_node, cheapest_time, cheapest_time_delta, cheapest_cost) = informant.get_info();
+            }
+        }
+        match (cheapest_call, cheapest_vehicle, cheapest_to_node, cheapest_time, cheapest_cost) {
+            (Some(call_value),Some(vehicle_value),Some(to_node_value),Some(time_value), Some(cost_value)) => {
+                car_times[vehicle_value] = time_value;
+                car_pos[vehicle_value] = to_node_value;
+                total_cost += cost_value;
+                cost_order[call_idx] = Some((cost_value, call_idx));
+            }
+            _ => return None //No valid solution!
+        }
+        total_cost += cheapest_cost.unwrap(); // Already checked that this valie is Some(v), so .unwrap() is safe.
+    }
+    return Some(cost_order);
+}
+
+fn sort_call_by_cost(
+    solution: &[i32;SOLUTION_SIZE],
+    vehicle_details : &[[i32;3usize]; NVEHICLES],
+    call_details : &[[i32;8usize]; NCALLS],
+    travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
+    node_costs: &[[i32;5usize];NCALLS*NVEHICLES]
+    ) -> [Option<(i32, usize)>; SOLUTION_SIZE] {
+    
+    let mut call_costs = get_move_costs(solution, vehicle_details, call_details, travel_costs, node_costs).expect("No solution to unwrap");
+    call_costs.sort_by(|a,b| {
+        match (a,b){
+            (None,None) => return Ordering::Equal,
+            (_,None) => return Ordering::Greater,
+            (None,_) => return Ordering::Less,
+            (Some((x1,_)),Some((y1,_))) => return x1.cmp(y1)
+        }
+    });
+    return call_costs;
+}
+
+pub fn move_most_expensive_call(    
+    current_solution: &[i32;SOLUTION_SIZE],
+    current_cost: &i32,
+    vehicle_details : &[[i32;3usize]; NVEHICLES],
+    call_details : &[[i32;8usize]; NCALLS],
+    travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
+    node_costs: &[[i32;5usize];NCALLS*NVEHICLES]
+    ) -> Option<([i32;SOLUTION_SIZE],i32)>{
+    let mut new_solution = current_solution.clone();
+    let sorted_call_costs = sort_call_by_cost(current_solution, vehicle_details, call_details, travel_costs, node_costs);
+    let mut total_cost = *current_cost;
+
+    if sorted_call_costs[0].is_none() || sorted_call_costs[1].is_none(){
+        return None;
+    }
+    let mut temp_solution = new_solution.clone();
+    'outer: for i in 0..(SOLUTION_SIZE-1) {
+        'inner: for j in (i+1)..SOLUTION_SIZE {
+            let (most_expensive, less_expensive) = match (sorted_call_costs[i], sorted_call_costs[j]) {
+                (None, _) => break 'outer,
+                (_, None) => break 'inner,
+                (Some(pair_a), Some(pair_b)) => (pair_a.1, pair_b.1),
+            };
+            temp_solution.swap(i, j);
+            let temp_cost = match calculate_cost(current_solution, vehicle_details, call_details, travel_costs, node_costs){
+                None => i32::MAX,
+                Some(val) => val
+            };
+            if temp_cost <= total_cost {
+                total_cost = temp_cost;
+                new_solution = temp_solution;
+            }
+        }
+    }
+    return Some((new_solution, total_cost));
+
+}
 
 
 pub fn randomly_improve_solution(

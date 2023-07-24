@@ -6,8 +6,6 @@ use std::env;
 use std::path::Path;
 use std::fs::File;
 use std::io::{self, BufRead};
-
-
 trait DeconstructArray{
     type Output;
     fn deconstruct_array(&self) -> Self::Output;

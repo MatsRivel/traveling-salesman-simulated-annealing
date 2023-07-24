@@ -1,5 +1,5 @@
 use std::{cmp::{min,max}, collections::HashMap};
-use crate::constants::{NVEHICLES,NNODES,NCALLS,TRAVEL_TIME_SIZE,SOLUTION_SIZE};
+use crate::constants::{NVEHICLES,NCALLS,SOLUTION_SIZE};
 
 #[derive(Debug)]
 pub enum CorrectnessError<'a>{ // TODO: Don't need to return the solution here... It is already owned by whatever calls the function returning these errors.
