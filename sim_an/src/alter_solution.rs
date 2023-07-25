@@ -1,18 +1,78 @@
-use crate::correctors::{correct_overcalling,correct_pickup_too_late,correct_deliver_too_late};
-use crate::validity_check::{correctness_check,CorrectnessError, deconstruct_vehicle, deconstruct_call, deconstruct_node, a_to_b_time, a_to_b_cost};
-use crate::constants::{NVEHICLES,NCALLS, TRAVEL_TIME_SIZE,SOLUTION_SIZE, MAX_RUNTIME_IN_SECONDS};
+use crate::validity_check::{deconstruct_vehicle, deconstruct_call, deconstruct_node, a_to_b_time, _correctness_check};
+use crate::constants::{NVEHICLES,NCALLS, SOLUTION_SIZE, MAX_RUNTIME_IN_SECONDS};
 
 use rand::prelude::Distribution;
 use rand::{thread_rng, Rng};
-use std::cmp::{min, max, Ordering};
-use std::fmt::format;
-use std::io;
-use std::thread::current;
-use itertools::{Itertools, enumerate};
-use permutator::{Permutation, HeapPermutationIterator};
-use std::time::{Duration, Instant};
+use std::cmp::{max, Ordering};
+use permutator::Permutation;
+use std::time::Instant;
 use std::collections::HashMap;
 use std;
+
+struct SolutionPermutation<'a>{
+    current_solution: &'a [i32;SOLUTION_SIZE],
+    current_cost : &'a i32,
+    vehicle_details : &'a [[i32;3usize]; NVEHICLES],
+    call_details : &'a [[i32;8usize]; NCALLS],
+    travel_costs: &'a HashMap<(i32,i32,i32),(i32,i32)>,
+    node_costs: &'a [[i32;5usize];NCALLS*NVEHICLES]
+}
+
+impl SolutionPermutation<'_> {
+    fn improve(mut self) -> ([i32;SOLUTION_SIZE], i32){
+        let start = Instant::now();
+        const WEIGHTS_LEN: usize = 3usize; // Just here so we can match it later.
+        let weights :[i32;WEIGHTS_LEN]= [10,8,1];
+        let distribution = rand::distributions::WeightedIndex::new(&weights).expect("Distributing weights failed. No weights provided?");
+        let mut rng = thread_rng();
+        let selected_idx = distribution.sample(&mut rng);
+
+
+        let mut best_solution = self.current_solution.clone();
+        let mut best_solution_cost = Some(self.current_cost.clone());
+
+        while start.elapsed().as_secs() < MAX_RUNTIME_IN_SECONDS{
+            let (new_solution, mut new_solution_cost) = match selected_idx{
+                0 => (swap_two_random_calls(0usize, &best_solution), None),
+                1 => (swap_three_random_calls(0usize, &best_solution), None),
+                2 =>{let (sol, val) = swap_most_expensive_calls(&best_solution,
+                                                                                &best_solution_cost.expect("Should not fail, as we never allow a None value to become the best value."),
+                                                                                self.vehicle_details,
+                                                                                self.call_details,
+                                                                                self.travel_costs,
+                                                                                self.node_costs);
+                    (sol, Some(val))
+                },// <- outputs this value to the "let" function.
+                WEIGHTS_LEN.. => panic!("Not enough weights"),
+                _ => panic!("This should not be possible to reach, as the last match point covers any remaining value...")
+            };
+            if new_solution_cost.is_none(){
+                new_solution_cost = calculate_cost(&new_solution, self.vehicle_details, self.call_details, self.travel_costs, self.node_costs);
+            }
+
+            if new_solution_cost.is_some() && (best_solution_cost.is_none() || new_solution_cost.unwrap() < best_solution_cost.unwrap()){
+                best_solution = new_solution;
+                best_solution_cost = new_solution_cost;
+            }
+        }
+        return (best_solution, best_solution_cost.expect("Should not fail, as we never allow None value to become the best value."));
+    }
+}
+
+pub fn semi_random_improve_solution(
+        current_solution: &[i32;SOLUTION_SIZE],
+        current_cost: &i32,
+        vehicle_details : &[[i32;3usize]; NVEHICLES],
+        call_details : &[[i32;8usize]; NCALLS],
+        travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
+        node_costs: &[[i32;5usize];NCALLS*NVEHICLES]
+    ) -> Option<([i32;SOLUTION_SIZE],i32)>{
+    
+    let sol_perm = SolutionPermutation{current_solution, current_cost, vehicle_details, call_details, travel_costs, node_costs};
+    let (new_sol, new_cost) = sol_perm.improve();
+    return Some((new_sol, new_cost)); 
+        
+}
 
 fn get_move_costs(
     solution: &[i32;SOLUTION_SIZE],
@@ -90,32 +150,33 @@ fn sort_call_by_cost(
     return call_costs;
 }
 
-pub fn move_most_expensive_call(    
+
+
+pub fn swap_most_expensive_calls(    
     current_solution: &[i32;SOLUTION_SIZE],
     current_cost: &i32,
     vehicle_details : &[[i32;3usize]; NVEHICLES],
     call_details : &[[i32;8usize]; NCALLS],
     travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
     node_costs: &[[i32;5usize];NCALLS*NVEHICLES]
-    ) -> Option<([i32;SOLUTION_SIZE],i32)>{
+    ) -> ([i32;SOLUTION_SIZE],i32){
     let mut new_solution = current_solution.clone();
     let sorted_call_costs = sort_call_by_cost(current_solution, vehicle_details, call_details, travel_costs, node_costs);
     let mut total_cost = *current_cost;
 
     if sorted_call_costs[0].is_none() || sorted_call_costs[1].is_none(){
-        return None;
+        return (new_solution, total_cost);
     }
     let mut temp_solution = new_solution.clone();
     'outer: for i in 0..(SOLUTION_SIZE-1) {
-        'inner: for j in (i+1)..SOLUTION_SIZE {
-            let (most_expensive, less_expensive) = match (sorted_call_costs[i], sorted_call_costs[j]) {
-                (None, _) => break 'outer,
-                (_, None) => break 'inner,
+        for j in (i+1)..SOLUTION_SIZE {
+            match (sorted_call_costs[i], sorted_call_costs[j]) {
+                (None, _) | (_, None)=> break 'outer, // If "None", no more valid pairs exist, so break the outer loop. 
                 (Some(pair_a), Some(pair_b)) => (pair_a.1, pair_b.1),
             };
             temp_solution.swap(i, j);
-            let temp_cost = match calculate_cost(current_solution, vehicle_details, call_details, travel_costs, node_costs){
-                None => i32::MAX,
+            let temp_cost = match calculate_cost(&new_solution, vehicle_details, call_details, travel_costs, node_costs){
+                None => continue, // If solution is not valid, try next permutation.
                 Some(val) => val
             };
             if temp_cost <= total_cost {
@@ -124,12 +185,12 @@ pub fn move_most_expensive_call(
             }
         }
     }
-    return Some((new_solution, total_cost));
+    return (new_solution, total_cost);
 
 }
 
 
-pub fn randomly_improve_solution(
+pub fn _randomly_improve_solution(
     current_solution: &[i32;SOLUTION_SIZE],
     current_cost: &i32,
     vehicle_details : &[[i32;3usize]; NVEHICLES],
@@ -178,7 +239,7 @@ fn swap_three_random_calls(_call_idx:usize, solution:&[i32;SOLUTION_SIZE])  -> [
     swap_call_with_random(call_idx, solution);
     return output;
 }
-pub fn brute_force_solve(
+pub fn _brute_force_solve(
     vehicle_details : &[[i32;3usize]; NVEHICLES],
     call_details : &[[i32;8usize]; NCALLS],
     travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
@@ -214,7 +275,7 @@ pub fn brute_force_solve(
         }
         for (index, element) in possibility.iter().enumerate(){
             current_solution[index] = *element as i32;
-        match correctness_check(&current_solution, vehicle_details, call_details, travel_costs, node_costs) {
+        match _correctness_check(&current_solution, vehicle_details, call_details, travel_costs, node_costs) {
             Ok(_val) =>{
                 println!("\n\n Correct!\nIt took {}s \t\t", start.elapsed().as_secs());
                 return current_solution;}
@@ -224,73 +285,6 @@ pub fn brute_force_solve(
     }
     println!("{} solutions tried, out of theoretical {} possible", solutions_tried, max_solutions);
     todo!("\nWhat if no possible solution exists?\n");
-}
-
-pub fn generate_any_valid_solution(
-    vehicle_details : &[[i32;3usize]; NVEHICLES],
-    call_details : &[[i32;8usize]; NCALLS],
-    travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
-    node_costs: &[[i32;5usize];NCALLS*NVEHICLES]
-    ) -> [i32;SOLUTION_SIZE]{
-
-    let mut current_solution:[i32;SOLUTION_SIZE] = [0i32;SOLUTION_SIZE];
-    for i in 0..NCALLS{
-        current_solution[i*2] = i as i32 +1;
-        current_solution[i*2+1] = i as i32 +1;
-    }
-    let mut counter = 0;
-    loop{
-        let mut dummy_input = "".to_string();
-        match io::stdin().read_line(&mut dummy_input) {
-            Ok(_) => (),
-            Err(_) => break
-        }
-        if counter % 100000 == 0{ // Make a dot every 10k and line every 100k loop  to track actual progress.
-            println!("| {}",counter);
-        }else if counter % 10000 == 0{
-            print!(".");
-        }
-        counter += 1;
-        let correctness_result = correctness_check(&current_solution, vehicle_details, call_details, travel_costs, node_costs);
-        match correctness_result{
-            Ok(_) => return current_solution,
-            Err(_) => {//println!("{:?}",&current_solution);
-
-            current_solution = swap_two_random_calls(0usize,&current_solution)} // 0usize is just a temp dummy value that does not affect the function.
-        };
-    }
-
-    loop{
-        let correctness_result = correctness_check(&current_solution, vehicle_details, call_details, travel_costs, node_costs);
-        let current_solution = match correctness_result{
-            Ok(_total_cost) => return current_solution,
-            Err(CorrectnessError::CallTooManyTimes { .. }) => correct_overcalling(&current_solution),                                    // Severe error: A function is not making balances changes. Recoverable, but there is a bug.
-            Err(CorrectnessError::DeliverTooLate { vehicle_idx, call, car_time, arrival_time, end_upper, .. }) =>{ 
-                correct_deliver_too_late(
-                    vehicle_idx,
-                    call,
-                    arrival_time,
-                    end_upper,
-                    travel_costs,
-                    &current_solution
-                )
-            },                  // Bad solution. Expected until the first valid solution occurs. Recoverable. 
-            Err(CorrectnessError::Overloaded { call, car_weight, loaded_weight, car_capacity, .. }) => todo!(),                 // Bad solution. Expected until the first valid solution occurs. Recoverable. 
-            Err(CorrectnessError::PickUpTooLate { vehicle_idx, call, car_time, arrival_time, start_upper, .. }) =>{ 
-                correct_pickup_too_late(
-                    vehicle_idx,
-                    call,
-                    arrival_time,
-                    start_upper,
-                    travel_costs,
-                    call_details,
-                    &current_solution
-                )
-            },                  // Bad solution. Expected until the first valid solution occurs. Recoverable. 
-            Err(CorrectnessError::PickupNotDelivered { idx, .. }) => todo!(),                                                                // Bad solution. Expected until the first valid solution occurs. Recoverable.
-            Err(e) => panic!("Unrecoverable error. Input is likely fundamentally flawed.\n{:?}",e)                                   // Fatal error: Input is flawed. No recovery possible.
-        };
-    }
 }
 
 struct Info{

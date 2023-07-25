@@ -1,5 +1,5 @@
 use std::{cmp::{min,max}, collections::HashMap};
-use crate::constants::{NVEHICLES,NCALLS,SOLUTION_SIZE};
+use crate::constants::{NVEHICLES,NCALLS,TRAVEL_TIME_SIZE,SOLUTION_SIZE};
 
 #[derive(Debug)]
 pub enum CorrectnessError<'a>{ // TODO: Don't need to return the solution here... It is already owned by whatever calls the function returning these errors.
@@ -100,7 +100,7 @@ fn get_idx_of_min(arr_in: [i32;NVEHICLES]) -> Option<usize>{
     }
     return Some(index);
 }
-pub fn correctness_check<'a>(
+pub fn _correctness_check<'a>(
         solution : &'a [i32;SOLUTION_SIZE],
         vehicle_details : &'a [[i32;3usize]; NVEHICLES],
         call_details : &'a [[i32;8usize]; NCALLS],
@@ -209,9 +209,11 @@ pub fn correctness_check<'a>(
                  return Err(CorrectnessError::CallTooManyTimes { call:*call,solution})},
         }
     }
-    for (idx, count) in call_counter.iter().enumerate().filter(|(index, n)| *(*n) ==1){
-        // println!("{}: {:?}","PickUpNotDelivered",solution);
-        return Err(CorrectnessError::PickupNotDelivered { idx, solution})
+    for (idx, count) in call_counter.iter().enumerate(){
+        match count {
+            1 => return Err(CorrectnessError::PickupNotDelivered { idx, solution}),
+            _ => continue
+        }
     }
 
     let total_cost = vehicle_costs.iter().sum();
