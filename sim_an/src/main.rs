@@ -32,8 +32,8 @@ fn prepare_data()->AllData{
         _ => "",
     };
     let mut full_path = "".to_string();
-    full_path.push_str(&base_path);
-    full_path.push_str(&file_name);
+    full_path.push_str(base_path);
+    full_path.push_str(file_name);
     let path = Path::new(full_path.as_str());
     let data_struct: AllData = get_all_data(path);
     return data_struct;

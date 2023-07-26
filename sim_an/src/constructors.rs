@@ -6,6 +6,20 @@ use std::env;
 use std::path::Path;
 use std::fs::File;
 use std::io::{self, BufRead};
+
+pub struct AllDataReference<'a>{
+    vehicle_details: &'a [[i32; 3]; NVEHICLES],
+    valid_calls: &'a [[i32; NCALLS]; NVEHICLES],
+    call_details: &'a [[i32; 8]; NCALLS],
+    travel_costs: &'a HashMap<(i32,i32,i32),(i32,i32)>,
+    node_costs: &'a [[i32; 5]; NCALLS*NVEHICLES]
+}
+#[allow(clippy::type_complexity)]
+impl AllDataReference<'_> {
+    fn deconstruct(&self) -> (&[[i32; 3]; NVEHICLES], &[[i32; NCALLS]; NVEHICLES], &[[i32; 8]; NCALLS], &HashMap<(i32,i32,i32),(i32,i32)>, &[[i32; 5]; NCALLS*NVEHICLES] ){
+        (self.vehicle_details, self.valid_calls, self.call_details, self.travel_costs, self.node_costs) 
+    }
+}
 trait DeconstructArray{
     type Output;
     fn deconstruct_array(&self) -> Self::Output;
@@ -24,7 +38,7 @@ pub struct AllData{
     travel_costs: HashMap<(i32,i32,i32),(i32,i32)>,
     node_costs: [[i32; 5]; NCALLS*NVEHICLES]
 }
-
+#[allow(clippy::type_complexity)]
 impl AllData{
     pub fn deconstruct(&self) -> ([[i32; 3]; NVEHICLES], [[i32; NCALLS]; NVEHICLES], [[i32; 8]; NCALLS], HashMap<(i32,i32,i32),(i32,i32)>, [[i32; 5]; NCALLS*NVEHICLES] ){
         (self.vehicle_details, self.valid_calls, self.call_details, self.travel_costs.clone(), self.node_costs) //Note: Find a way to avoid cloning?
@@ -36,7 +50,7 @@ where P: AsRef<Path>, {
     Ok(io::BufReader::new(file).lines())
 }
 pub fn construct_vehicle_details(s:String) -> [i32; 3usize] {
-    s.split(",")
+    s.split(',')
     .map(|s|
         s.to_string()
         .parse::<i32>()
@@ -46,7 +60,7 @@ pub fn construct_vehicle_details(s:String) -> [i32; 3usize] {
 }
 pub fn construct_valid_calls(s:String)-> [i32;NCALLS] {
     let mut output = [-1i32;NCALLS];
-    let iterator = s.split(",")
+    let iterator = s.split(',')
     .map(|s| 
         s.to_string()
         .parse::<i32>()
@@ -58,7 +72,7 @@ pub fn construct_valid_calls(s:String)-> [i32;NCALLS] {
     return output;
 }
 pub fn construct_call_details(s:String) -> [i32;8usize] {
-    s.split(",")
+    s.split(',')
         .map(|s|
             s.to_string()
             .parse::<i32>()
@@ -68,7 +82,7 @@ pub fn construct_call_details(s:String) -> [i32;8usize] {
 }
 pub fn construct_travel_costs(s:String, used_nodes:[bool;NNODES]) -> Option<[i32;5usize]>{
     // arr == [vehicle, origin node, destination node, travel time (in hours), travel cost (in $)]
-    let arr:[i32;5usize] = s.split(",")
+    let arr:[i32;5usize] = s.split(',')
     .map(|s|
         s.to_string()
         .parse::<i32>()
@@ -76,13 +90,13 @@ pub fn construct_travel_costs(s:String, used_nodes:[bool;NNODES]) -> Option<[i32
     )
     .collect::<Vec<i32>>().try_into().expect("Failed to convert Vec to [i32;5usize]");
 
-    if used_nodes[arr[1usize] as usize-1] == false || used_nodes[arr[2usize] as usize-1] == false {
+    if !used_nodes[arr[1usize] as usize-1] || !used_nodes[arr[2usize] as usize-1]{
         return None;
     } 
     return Some(arr);
 }
 pub fn construct_node_costs(s:String) -> [i32;5usize] {
-    s.split(",")
+    s.split(',')
         .map(|s|
             s.to_string()
             .parse::<i32>()
@@ -130,7 +144,7 @@ pub fn get_all_data(path:&Path) -> AllData{
     let mut used_nodes: [bool;NNODES] = [false;NNODES];
     for result_line in line_buffer{
         let line = result_line.expect("Failed to unwrap result_line");
-        if line.starts_with("%"){
+        if line.starts_with('%'){
             info_idx += 1;
             continue;
         }
@@ -149,14 +163,10 @@ pub fn get_all_data(path:&Path) -> AllData{
                     used_nodes[destination_node_index] = true;
                     call_details_idx += 1;
                 },
-            6 => {  match constructors::construct_travel_costs(line,used_nodes){
-                        Some(v) => {
-                            let (vehicle, origin,destination,time,cost) = v.deconstruct_array();
-                            travel_costs.insert((vehicle, origin, destination),(time,cost));
-                        },
-                        None => ()
-            }
-
+            6 => {  if let Some(v) = constructors::construct_travel_costs(line,used_nodes){
+                        let (vehicle, origin,destination,time,cost) = v.deconstruct_array();
+                        travel_costs.insert((vehicle, origin, destination),(time,cost));
+                    }
                 },
             7 => {  node_costs[node_cost_idx] = constructors::construct_node_costs(line);
                     node_cost_idx += 1;

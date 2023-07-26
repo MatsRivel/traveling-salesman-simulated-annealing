@@ -24,16 +24,10 @@ fn a_to_b_info(vehicle_idx:usize,a:i32,b:i32,travel_costs: &HashMap<(i32,i32,i32
     travel_costs.get(&(vehicle,a_prime,b_prime))
 }
 pub fn a_to_b_time(vehicle_idx:usize,a:i32,b:i32,travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>) -> Option<i32>{
-    match a_to_b_info(vehicle_idx, a, b, travel_costs){
-        Some(v) => Some(v.0),
-        None => None
-    }
+    a_to_b_info(vehicle_idx, a, b, travel_costs).map(|v| v.0)
 }
 pub fn a_to_b_cost(vehicle_idx:usize,a:i32,b:i32,travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>) -> Option<i32>{
-    match a_to_b_info(vehicle_idx, a, b, travel_costs){
-        Some(v) => Some(v.1),
-        None => None
-    }
+    a_to_b_info(vehicle_idx, a, b, travel_costs).map(|v| v.1)
 }
 pub fn deconstruct_vehicle(vehicle_idx:usize,vehicle_details : &[[i32;3usize]; NVEHICLES]) -> (i32,i32,i32){
     // Home, start_time, capacity.
@@ -85,9 +79,8 @@ pub fn deconstruct_node(vehicle_idx:usize,call:i32,node_costs:&[[i32;5usize];NCA
     (node_costs[index][1],node_costs[index][2],node_costs[index][3],node_costs[index][4])
 }
 fn get_idx_of_min(arr_in: [i32;NVEHICLES]) -> Option<usize>{
-    match NVEHICLES{
-        0 => return None,
-        _ => (),
+    if NVEHICLES == 0{
+        return None;
     }
 
     let mut min = &arr_in[0];
@@ -137,10 +130,10 @@ pub fn _correctness_check<'a>(
         }
         let car_idx = get_idx_of_min(vehicle_times).expect("Program will not get to this point without at least ONE vehicle...");
         call_counter[(call-1) as usize] += 1;
-        let car_time = vehicle_times[car_idx as usize];
-        let car_pos = vehicle_positions[car_idx as usize];
-        let car_weight = vehicle_weights[car_idx as usize];
-        let car_capacity = vehicle_details[car_idx as usize][2];
+        let car_time = vehicle_times[car_idx];
+        let car_pos = vehicle_positions[car_idx];
+        let car_weight = vehicle_weights[car_idx];
+        let car_capacity = vehicle_details[car_idx][2];
 
         // Note: Origin and destination is from the perspective of the call, not the vehicle.
         let (origin,

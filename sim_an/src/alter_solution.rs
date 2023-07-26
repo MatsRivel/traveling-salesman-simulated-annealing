@@ -23,13 +23,13 @@ impl SolutionPermutation<'_> {
         let start = Instant::now();
         const WEIGHTS_LEN: usize = 3usize; // Just here so we can match it later.
         let weights :[i32;WEIGHTS_LEN]= [10,8,1];
-        let distribution = rand::distributions::WeightedIndex::new(&weights).expect("Distributing weights failed. No weights provided?");
+        let distribution = rand::distributions::WeightedIndex::new(weights).expect("Distributing weights failed. No weights provided?");
         let mut rng = thread_rng();
         let selected_idx = distribution.sample(&mut rng);
 
 
-        let mut best_solution = self.current_solution.clone();
-        let mut best_solution_cost = Some(self.current_cost.clone());
+        let mut best_solution = *self.current_solution;
+        let mut best_solution_cost = Some(*self.current_cost);
 
         while start.elapsed().as_secs() < MAX_RUNTIME_IN_SECONDS{
             let (new_solution, mut new_solution_cost) = match selected_idx{
@@ -99,16 +99,18 @@ fn get_move_costs(
         let mut cheapest_time:Option<i32> = None;
         let mut cheapest_to_node:Option<i32> = None;
         let mut cheapest_time_delta:Option<i32> = None;
+        let mut car_info = CarInfo {vehicle_idx:0, car_pos, car_times};
         for vehicle_idx in 0..NVEHICLES{
-            let possible_informant:Option<Info> = Info::new(call_counter[call as usize-1], vehicle_idx, car_pos, car_times, call as i32,node_costs, call_details,travel_costs);
+            car_info.vehicle_idx = vehicle_idx;
+            let possible_informant:Option<Info> = Info::new(call_counter[call as usize-1], &car_info, call,node_costs, call_details,travel_costs);
             let informant = match possible_informant {
                 Some(v) => v,
                 None => continue // If no valid data, leave
             };
             if informant.is_faster(cheapest_time_delta) || cheapest_call.is_none(){
                 cheapest_vehicle = Some(vehicle_idx);
-                if cheapest_call.is_some(){
-                    call_counter[cheapest_call.unwrap()-1] -= 1;
+                if let Some(i) = cheapest_call{
+                    call_counter[i-1] -= 1;
                 }
                 cheapest_call = Some(call as usize);
                 call_counter[call as usize-1] += 1;
@@ -160,14 +162,14 @@ pub fn swap_most_expensive_calls(
     travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
     node_costs: &[[i32;5usize];NCALLS*NVEHICLES]
     ) -> ([i32;SOLUTION_SIZE],i32){
-    let mut new_solution = current_solution.clone();
+    let mut new_solution = *current_solution;//current_solution.clone();
     let sorted_call_costs = sort_call_by_cost(current_solution, vehicle_details, call_details, travel_costs, node_costs);
     let mut total_cost = *current_cost;
 
     if sorted_call_costs[0].is_none() || sorted_call_costs[1].is_none(){
         return (new_solution, total_cost);
     }
-    let mut temp_solution = new_solution.clone();
+    let mut temp_solution = new_solution; //new_solution.clone();
     'outer: for i in 0..(SOLUTION_SIZE-1) {
         for j in (i+1)..SOLUTION_SIZE {
             match (sorted_call_costs[i], sorted_call_costs[j]) {
@@ -189,7 +191,8 @@ pub fn swap_most_expensive_calls(
 
 }
 
-
+#[allow(dead_code)]
+type SwapperFunction = fn(usize, &[i32; SOLUTION_SIZE]) -> [i32; SOLUTION_SIZE];
 pub fn _randomly_improve_solution(
     current_solution: &[i32;SOLUTION_SIZE],
     current_cost: &i32,
@@ -199,9 +202,9 @@ pub fn _randomly_improve_solution(
     node_costs: &[[i32;5usize];NCALLS*NVEHICLES]
     ) -> Option<([i32;SOLUTION_SIZE],i32)>{
     let start = Instant::now();
-    let function_list: [fn(usize, &[i32; SOLUTION_SIZE]) -> [i32; SOLUTION_SIZE]; 3] = [swap_call_with_random, swap_two_random_calls, swap_three_random_calls];
+    let function_list: [SwapperFunction; 3] = [swap_call_with_random, swap_two_random_calls, swap_three_random_calls];
     let weights = [3,2,1];
-    let distribution = rand::distributions::WeightedIndex::new(&weights).expect("Distributing weights failed. No weights provided?");
+    let distribution = rand::distributions::WeightedIndex::new(weights).expect("Distributing weights failed. No weights provided?");
     let mut rng = thread_rng();
     let selected_function = function_list[distribution.sample(&mut rng)];
     let mut best_solution = selected_function(0usize,current_solution);
@@ -222,7 +225,7 @@ pub fn _randomly_improve_solution(
 }
 
 fn swap_call_with_random(call_idx:usize,solution:&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
-    let mut output: [i32;SOLUTION_SIZE] = solution.clone();
+    let mut output: [i32;SOLUTION_SIZE] = *solution;//solution.clone();
     let other_idx = thread_rng().gen_range(0..(SOLUTION_SIZE));
     output.swap(call_idx,other_idx);
     return output;
@@ -233,7 +236,7 @@ pub fn swap_two_random_calls(_call_idx:usize, solution:&[i32;SOLUTION_SIZE]) -> 
     swap_call_with_random(call_idx,solution)
 }
 fn swap_three_random_calls(_call_idx:usize, solution:&[i32;SOLUTION_SIZE])  -> [i32;SOLUTION_SIZE]{
-    let mut output: [i32;SOLUTION_SIZE] = solution.clone();
+    let output: [i32;SOLUTION_SIZE] = *solution;
     let call_idx = thread_rng().gen_range(0..(SOLUTION_SIZE));
     swap_call_with_random(call_idx, solution);
     swap_call_with_random(call_idx, solution);
@@ -270,7 +273,7 @@ pub fn _brute_force_solve(
 
     for possibility in solution_iterator_main{
         solutions_tried += 1;
-        if solutions_tried % one_percent_of_max as i64 == 0{
+        if solutions_tried % one_percent_of_max== 0{
             println!("{}% in {}sec", (solutions_tried as f64) / (one_percent_of_max as f64), start.elapsed().as_secs())
         }
         for (index, element) in possibility.iter().enumerate(){
@@ -287,6 +290,11 @@ pub fn _brute_force_solve(
     todo!("\nWhat if no possible solution exists?\n");
 }
 
+struct CarInfo{
+    vehicle_idx:usize,
+    car_pos:[i32;NVEHICLES],
+    car_times:[i32;NVEHICLES]
+}
 struct Info{
     to_node:i32,
     total_time:i32,
@@ -296,18 +304,22 @@ struct Info{
 
 }
 impl Info{
-    fn new(call_count: i32, vehicle_idx:usize, car_pos:[i32;NVEHICLES], car_times:[i32;NVEHICLES], call:i32,node_costs:&[[i32;5usize];NCALLS*NVEHICLES], call_details:&[[i32;8usize]; NCALLS],travel_costs:&HashMap<(i32,i32,i32),(i32,i32)>) -> Option<Self>{
+    fn new(call_count: i32, car_info:&CarInfo, call:i32, node_costs:&[[i32;5usize];NCALLS*NVEHICLES], call_details:&[[i32;8usize]; NCALLS],travel_costs:&HashMap<(i32,i32,i32),(i32,i32)>) -> Option<Self>{
+        let car_pos = car_info.car_pos;
+        let car_times = car_info.car_times;
+        let vehicle_idx = car_info.vehicle_idx;
+
         let from_node = car_pos[vehicle_idx];
         let current_time = car_times[vehicle_idx];
         let (mut node_time, mut node_cost, mut to_node, mut _call_size, mut cost_of_not_deliver, mut lower_bound, mut upper_bound) = (0i32,0i32,0i32,0i32, 0i32, 0i32, 0i32); 
         match call_count{
             0 => {
-                    (node_time, node_cost, _, _) = deconstruct_node(vehicle_idx, (call) as i32, node_costs);
-                    (to_node, _, _call_size, cost_of_not_deliver, lower_bound, upper_bound, _, _) = deconstruct_call(call as i32, call_details);
+                    (node_time, node_cost, _, _) = deconstruct_node(vehicle_idx, call, node_costs);
+                    (to_node, _, _call_size, cost_of_not_deliver, lower_bound, upper_bound, _, _) = deconstruct_call(call, call_details);
                 },
             1 => {
-                    (_, _, node_time, node_cost) = deconstruct_node(vehicle_idx, (call) as i32, node_costs);
-                    (_, to_node, _call_size, cost_of_not_deliver, _, _, lower_bound, upper_bound) = deconstruct_call(call as i32, call_details);
+                    (_, _, node_time, node_cost) = deconstruct_node(vehicle_idx, call, node_costs);
+                    (_, to_node, _call_size, cost_of_not_deliver, _, _, lower_bound, upper_bound) = deconstruct_call(call, call_details);
                 },
             _ => return None
         }
@@ -363,16 +375,18 @@ fn calculate_cost(
         let mut cheapest_time:Option<i32> = None;
         let mut cheapest_to_node:Option<i32> = None;
         let mut cheapest_time_delta:Option<i32> = None;
+        let mut car_info = CarInfo{vehicle_idx:0, car_pos, car_times};
         for vehicle_idx in 0..NVEHICLES{
-            let possible_informant:Option<Info> = Info::new(call_counter[call as usize-1], vehicle_idx, car_pos, car_times, call as i32,node_costs, call_details,travel_costs);
+            car_info.vehicle_idx = vehicle_idx;
+            let possible_informant:Option<Info> = Info::new(call_counter[call as usize-1], &car_info, call, node_costs, call_details,travel_costs);
             let informant = match possible_informant {
                 Some(v) => v,
                 None => continue // If no valid data, leave
             };
             if informant.is_faster(cheapest_time_delta) || cheapest_call.is_none(){
                 cheapest_vehicle = Some(vehicle_idx);
-                if cheapest_call.is_some(){
-                    call_counter[cheapest_call.unwrap()-1] -= 1;
+                if let Some(i) = cheapest_call{
+                    call_counter[i-1] -= 1;
                 }
                 cheapest_call = Some(call as usize);
                 call_counter[call as usize-1] += 1;
@@ -411,6 +425,7 @@ pub fn naive_solve(
     }
 
     let mut call_counter = [0;NCALLS];
+    #[allow(clippy::needless_range_loop)]
     for solution_idx in 0..SOLUTION_SIZE{
         let mut cheapest_vehicle:Option<usize> = None;
         let mut cheapest_call:Option<usize> = None;
@@ -418,18 +433,22 @@ pub fn naive_solve(
         let mut cheapest_time:Option<i32> = Some(i32::MAX);
         let mut cheapest_to_node:Option<i32> = None;
         let mut cheapest_time_delta:Option<i32> = Some(i32::MAX);
+        let mut car_info = CarInfo{vehicle_idx:0, car_pos, car_times};
         for vehicle_idx in 0..NVEHICLES{
+            car_info.vehicle_idx = vehicle_idx;
             for call in 1..=NCALLS{// We're picking up the call:
-                let possible_informant:Option<Info> = Info::new(call_counter[call-1], vehicle_idx, car_pos, car_times, call as i32,node_costs, call_details,travel_costs);
+                let possible_informant:Option<Info> = Info::new(call_counter[call-1], &car_info, call as i32,node_costs, call_details,travel_costs);
                 let informant = match possible_informant {
                     Some(v) => v,
                     None => continue // If no valid data, leave
                 };
                 if informant.is_faster(cheapest_time_delta) || cheapest_call.is_none(){
                     cheapest_vehicle = Some(vehicle_idx);
-                    if cheapest_call.is_some(){
-                        call_counter[cheapest_call.unwrap()-1] -= 1;
+                    
+                    if let Some(i) = cheapest_call{
+                        call_counter[i-1] -= 1;
                     }
+
                     cheapest_call = Some(call);
                     call_counter[call-1] += 1;
                     cheapest_cost = Some(0); // TODO: Temporary 0. Should be removed later, when we care about cost.

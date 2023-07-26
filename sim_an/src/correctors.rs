@@ -9,7 +9,7 @@ pub fn correct_overcalling(solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE
     Returns a solution where calls occur no more than twice. 
     */
     let mut counter = [0i32;NCALLS];
-    let mut output = solution.clone();
+    let mut output = *solution;
     let mut open_indices:Vec<usize> = Vec::with_capacity(20); // Arbitrary capacity, but better than 1.
     // Find calls occuring more than twice. 
     for (idx, call) in solution.iter().enumerate(){
@@ -51,7 +51,7 @@ pub fn correct_pickup_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, st
     while current_time > start_upper && call_idx > 0{
         match call_idx{
             2.. => {}, // Continue as normal.
-            ..=1 | _  => { //TODO: Issue occurs here due to only considering *one* car, which can never be fast enough to deal with all calls.
+            _  => { //TODO: Issue occurs here due to only considering *one* car, which can never be fast enough to deal with all calls.
                 println!("\nVehicle idx: {}, call: {}, arrival_time: {}, start_upper {}\nsolution: {:?}\n",vehicle_idx, call, arrival_time, start_upper, solution);
                 panic!("First call is \"picked up too late\". Issues with cars?")
             } // First call called cant possible be picked up *too late*???
@@ -71,7 +71,7 @@ pub fn correct_pickup_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, st
         current_time -= call_time;
     }
     // Move all calls from the desired position to the original position one step ahead, effective deleting the original call at its original position.
-    let mut output:[i32;SOLUTION_SIZE] = solution.clone();
+    let mut output:[i32;SOLUTION_SIZE] = *solution;
     for insert_idx in ((call_idx+1)..(initial_call_idx+1)).rev() { // The range [initial_call_idx, call_idx+1]
         output[insert_idx] = output[insert_idx -1];
     }
@@ -103,7 +103,7 @@ pub fn correct_deliver_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, e
         current_time -= call_time;
     }
     // Move all calls from the desired position to the original position one step ahead, effective deleting the original call at its original position.
-    let mut output:[i32;SOLUTION_SIZE] = solution.clone();
+    let mut output:[i32;SOLUTION_SIZE] = *solution;
     for insert_idx in ((call_idx+1)..(initial_call_idx+1)).rev() { // The range [initial_call_idx, call_idx+1]
         output[insert_idx] = output[insert_idx -1];
     }
