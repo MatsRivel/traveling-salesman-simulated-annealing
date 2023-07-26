@@ -1,1 +1,2 @@
-sim_an/target/
+sim_an/target/*
+*.d
