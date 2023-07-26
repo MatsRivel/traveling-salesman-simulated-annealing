@@ -16,8 +16,7 @@ macro_rules! rec_func {
     };
 }
 
-
-rec_func!(TRAVEL_TIME_SIZE, recursive_sum, NNODES);
+rec_func!(_TRAVEL_TIME_SIZE, _recursive_sum, NNODES);
 //pub const TRAVEL_TIME_SIZE_REDUNDANT: usize = NNODES*NNODES*NVEHICLES;
 pub const SOLUTION_SIZE: usize = NCALLS*2;
 

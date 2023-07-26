@@ -5,9 +5,9 @@ mod correctors;
 mod alter_solution;
 
 use constructors::{AllData, get_all_data};
-use constants::{NVEHICLES, NCALLS,NNODES, SOLUTION_SIZE, TRAVEL_TIME_SIZE,MAX_RUNTIME_IN_SECONDS};
-use std::{path::Path, panic};
-use crate::{alter_solution::{_brute_force_solve, naive_solve, _randomly_improve_solution, semi_random_improve_solution}, constants::N_THREADS};
+use constants::{NVEHICLES, NCALLS, SOLUTION_SIZE};
+use std::{path::Path};
+use crate::{alter_solution::{naive_solve, semi_random_improve_solution}, constants::N_THREADS};
 use std::time::Instant;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
@@ -17,7 +17,7 @@ fn _get_predefined_solution(predef:Vec<i32>) -> [i32;SOLUTION_SIZE] {
     for (idx,element) in predef.iter().enumerate(){
         sol[idx] = *element;
     }
-    return sol;
+    sol
 }
 fn prepare_data()->AllData{
     let base_path = r"C:\Users\rivelandm\OneDrive - NOV Inc\Documents\Other\traveling-salesman-simulated-annealing\sim_an\src\";
@@ -36,7 +36,7 @@ fn prepare_data()->AllData{
     full_path.push_str(file_name);
     let path = Path::new(full_path.as_str());
     let data_struct: AllData = get_all_data(path);
-    return data_struct;
+    data_struct
 }
 // Note to self: Would be more fair to read reduntant file but only keep non-redundant info.
 // Currently reading a different file seems a bit like a cheat.

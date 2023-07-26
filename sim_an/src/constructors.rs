@@ -1,4 +1,4 @@
-use crate::constants::{NVEHICLES,NCALLS, NNODES, TRAVEL_TIME_SIZE};
+use crate::constants::{NVEHICLES,NCALLS, NNODES};
 use crate::constructors;
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -7,19 +7,6 @@ use std::path::Path;
 use std::fs::File;
 use std::io::{self, BufRead};
 
-pub struct AllDataReference<'a>{
-    vehicle_details: &'a [[i32; 3]; NVEHICLES],
-    valid_calls: &'a [[i32; NCALLS]; NVEHICLES],
-    call_details: &'a [[i32; 8]; NCALLS],
-    travel_costs: &'a HashMap<(i32,i32,i32),(i32,i32)>,
-    node_costs: &'a [[i32; 5]; NCALLS*NVEHICLES]
-}
-#[allow(clippy::type_complexity)]
-impl AllDataReference<'_> {
-    fn deconstruct(&self) -> (&[[i32; 3]; NVEHICLES], &[[i32; NCALLS]; NVEHICLES], &[[i32; 8]; NCALLS], &HashMap<(i32,i32,i32),(i32,i32)>, &[[i32; 5]; NCALLS*NVEHICLES] ){
-        (self.vehicle_details, self.valid_calls, self.call_details, self.travel_costs, self.node_costs) 
-    }
-}
 trait DeconstructArray{
     type Output;
     fn deconstruct_array(&self) -> Self::Output;
@@ -69,7 +56,7 @@ pub fn construct_valid_calls(s:String)-> [i32;NCALLS] {
     for (idx, value) in iterator.enumerate(){
         output[idx] = value;
     }
-    return output;
+    output
 }
 pub fn construct_call_details(s:String) -> [i32;8usize] {
     s.split(',')
@@ -93,7 +80,7 @@ pub fn construct_travel_costs(s:String, used_nodes:[bool;NNODES]) -> Option<[i32
     if !used_nodes[arr[1usize] as usize-1] || !used_nodes[arr[2usize] as usize-1]{
         return None;
     } 
-    return Some(arr);
+    Some(arr)
 }
 pub fn construct_node_costs(s:String) -> [i32;5usize] {
     s.split(',')
@@ -175,5 +162,5 @@ pub fn get_all_data(path:&Path) -> AllData{
             ..=-1 | 7.. => {panic!("Out of lines?")}
         }
     }
-    return  AllData{vehicle_details, valid_calls, call_details, travel_costs, node_costs};
+    AllData{vehicle_details, valid_calls, call_details, travel_costs, node_costs}
 }

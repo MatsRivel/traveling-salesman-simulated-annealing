@@ -1,19 +1,19 @@
 use std::{cmp::{min,max}, collections::HashMap};
-use crate::constants::{NVEHICLES,NCALLS,TRAVEL_TIME_SIZE,SOLUTION_SIZE};
+use crate::constants::{NVEHICLES,NCALLS,SOLUTION_SIZE};
 
 #[derive(Debug)]
 pub enum CorrectnessError<'a>{ // TODO: Don't need to return the solution here... It is already owned by whatever calls the function returning these errors.
-    CallNumberTooLow{call_number:i32, solution:&'a [i32;SOLUTION_SIZE]},
-    CallNumberTooHigh{call_number:i32, solution:&'a [i32;SOLUTION_SIZE]},
-    VehicleNumberTooLow{vehicle_number:i32, solution:&'a [i32;SOLUTION_SIZE]}, // Not needed here.
-    VehicleNumberTooHigh{vehicle_number:i32, solution:&'a [i32;SOLUTION_SIZE]}, // Not needed here.
-    NegativeLoad{ call:i32, unloaded_weight:i32, solution:&'a [i32;SOLUTION_SIZE]},
-    Overloaded{call:i32,car_weight:i32,loaded_weight:i32,car_capacity:i32, solution:&'a [i32;SOLUTION_SIZE]},
-    PickupNotDelivered{idx:usize,solution:&'a [i32;SOLUTION_SIZE]},
-    CallTooManyTimes{call:i32, solution:&'a [i32;SOLUTION_SIZE]},
-    PickUpTooLate{vehicle_idx:usize, call:i32,car_time:i32,arrival_time:i32,start_upper:i32, solution:&'a [i32;SOLUTION_SIZE]},
-    DeliverTooLate{vehicle_idx:usize,call:i32,car_time:i32,arrival_time:i32,end_upper:i32, solution:&'a [i32;SOLUTION_SIZE]},
-    NoPath{},
+    _CallNumberTooLow{call_number:i32, solution:&'a [i32;SOLUTION_SIZE]},
+    _CallNumberTooHigh{call_number:i32, solution:&'a [i32;SOLUTION_SIZE]},
+    _VehicleNumberTooLow{vehicle_number:i32, solution:&'a [i32;SOLUTION_SIZE]}, // Not needed here.
+    _VehicleNumberTooHigh{vehicle_number:i32, solution:&'a [i32;SOLUTION_SIZE]}, // Not needed here.
+    _NegativeLoad{ call:i32, unloaded_weight:i32, solution:&'a [i32;SOLUTION_SIZE]},
+    _Overloaded{call:i32,car_weight:i32,loaded_weight:i32,car_capacity:i32, solution:&'a [i32;SOLUTION_SIZE]},
+    _PickupNotDelivered{idx:usize,solution:&'a [i32;SOLUTION_SIZE]},
+    _CallTooManyTimes{call:i32, solution:&'a [i32;SOLUTION_SIZE]},
+    _PickUpTooLate{vehicle_idx:usize, call:i32,car_time:i32,arrival_time:i32,start_upper:i32, solution:&'a [i32;SOLUTION_SIZE]},
+    _DeliverTooLate{vehicle_idx:usize,call:i32,car_time:i32,arrival_time:i32,end_upper:i32, solution:&'a [i32;SOLUTION_SIZE]},
+    _NoPath{},
 }
 
 
@@ -26,7 +26,7 @@ fn a_to_b_info(vehicle_idx:usize,a:i32,b:i32,travel_costs: &HashMap<(i32,i32,i32
 pub fn a_to_b_time(vehicle_idx:usize,a:i32,b:i32,travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>) -> Option<i32>{
     a_to_b_info(vehicle_idx, a, b, travel_costs).map(|v| v.0)
 }
-pub fn a_to_b_cost(vehicle_idx:usize,a:i32,b:i32,travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>) -> Option<i32>{
+pub fn _a_to_b_cost(vehicle_idx:usize,a:i32,b:i32,travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>) -> Option<i32>{
     a_to_b_info(vehicle_idx, a, b, travel_costs).map(|v| v.1)
 }
 pub fn deconstruct_vehicle(vehicle_idx:usize,vehicle_details : &[[i32;3usize]; NVEHICLES]) -> (i32,i32,i32){
@@ -78,7 +78,7 @@ pub fn deconstruct_node(vehicle_idx:usize,call:i32,node_costs:&[[i32;5usize];NCA
     let index = (call-1) as usize + vehicle_idx*NCALLS;
     (node_costs[index][1],node_costs[index][2],node_costs[index][3],node_costs[index][4])
 }
-fn get_idx_of_min(arr_in: [i32;NVEHICLES]) -> Option<usize>{
+fn _get_idx_of_min(arr_in: [i32;NVEHICLES]) -> Option<usize>{
     if NVEHICLES == 0{
         return None;
     }
@@ -91,7 +91,7 @@ fn get_idx_of_min(arr_in: [i32;NVEHICLES]) -> Option<usize>{
             index = idx;
         }
     }
-    return Some(index);
+    Some(index)
 }
 pub fn _correctness_check<'a>(
         solution : &'a [i32;SOLUTION_SIZE],
@@ -123,12 +123,12 @@ pub fn _correctness_check<'a>(
         // Check that calls are in the range of (0,NNCALLS]
         if *call <= 0{
             // println!("{}: {:?}","CallNumberTooLow",solution);
-            return Err(CorrectnessError::CallNumberTooLow{call_number:*call, solution});
-        }if *call > (NCALLS as i32){
+            return Err(CorrectnessError::_CallNumberTooLow{call_number:*call, solution});
+        }else if *call > (NCALLS as i32){
             // println!("{}: {:?}","CallNumberTooHigh",solution);
-            return Err(CorrectnessError::CallNumberTooHigh{call_number:*call, solution})
+            return Err(CorrectnessError::_CallNumberTooHigh{call_number:*call, solution})
         }
-        let car_idx = get_idx_of_min(vehicle_times).expect("Program will not get to this point without at least ONE vehicle...");
+        let car_idx = _get_idx_of_min(vehicle_times).expect("Program will not get to this point without at least ONE vehicle...");
         call_counter[(call-1) as usize] += 1;
         let car_time = vehicle_times[car_idx];
         let car_pos = vehicle_positions[car_idx];
@@ -157,11 +157,11 @@ pub fn _correctness_check<'a>(
 
         let moving_time = match a_to_b_time(car_idx,car_pos,origin,travel_costs){
             Some(v) => v,
-            None => return Err(CorrectnessError::NoPath{}),
+            None => return Err(CorrectnessError::_NoPath{}),
         };
-        let moving_cost = match a_to_b_cost(car_idx,car_pos,origin,travel_costs){
+        let moving_cost = match _a_to_b_cost(car_idx,car_pos,origin,travel_costs){
             Some(v) => v,
-            None => return Err(CorrectnessError::NoPath{}),
+            None => return Err(CorrectnessError::_NoPath{}),
         };
 
         // Check if pick-up or deliver. If already delivered, can not be called again.
@@ -171,10 +171,10 @@ pub fn _correctness_check<'a>(
                 let loaded_weight = car_weight+call_size;
                 if arrival_time > start_upper{
                     // println!("{}: {:?}","PickUpTooLate",solution);
-                    return Err(CorrectnessError::PickUpTooLate{vehicle_idx:car_idx,call:*call,car_time,arrival_time, start_upper, solution});
-                }if loaded_weight > car_capacity{
+                    return Err(CorrectnessError::_PickUpTooLate{vehicle_idx:car_idx,call:*call,car_time,arrival_time, start_upper, solution});
+                }else if loaded_weight > car_capacity{
                     // println!("{}: {:?}","Overloaded",solution);
-                    return Err(CorrectnessError::Overloaded {call:*call, car_weight, loaded_weight, car_capacity, solution});
+                    return Err(CorrectnessError::_Overloaded {call:*call, car_weight, loaded_weight, car_capacity, solution});
                 }
                 vehicle_times[car_idx]  = max(arrival_time, start_lower);
                 vehicle_weights[car_idx] = loaded_weight;
@@ -185,12 +185,12 @@ pub fn _correctness_check<'a>(
                 let arrival_time = car_time + moving_time + destination_time;
                 if arrival_time > end_upper{
                     // println!("{}: {:?}","DeliverTooLate",solution);
-                    return Err(CorrectnessError::DeliverTooLate{vehicle_idx:car_idx, call:*call, car_time, arrival_time, end_upper, solution});
+                    return Err(CorrectnessError::_DeliverTooLate{vehicle_idx:car_idx, call:*call, car_time, arrival_time, end_upper, solution});
                 }
                 let unloaded_weight = car_weight-call_size;
                 if unloaded_weight < 0{
                     // println!("{}: {:?}","NegativeLoad",solution);
-                    return Err(CorrectnessError::NegativeLoad{ call:*call, unloaded_weight, solution})
+                    return Err(CorrectnessError::_NegativeLoad{ call:*call, unloaded_weight, solution})
                 }
                 vehicle_times[car_idx]  = max(arrival_time, end_lower);
                 vehicle_weights[car_idx] = unloaded_weight;
@@ -199,18 +199,18 @@ pub fn _correctness_check<'a>(
                 
             },
             _ =>{// println!("{}: {:?}","CallTooManyTimes",solution);
-                 return Err(CorrectnessError::CallTooManyTimes { call:*call,solution})},
+                 return Err(CorrectnessError::_CallTooManyTimes { call:*call,solution})},
         }
     }
     for (idx, count) in call_counter.iter().enumerate(){
         match count {
-            1 => return Err(CorrectnessError::PickupNotDelivered { idx, solution}),
+            1 => return Err(CorrectnessError::_PickupNotDelivered { idx, solution}),
             _ => continue
         }
     }
 
     let total_cost = vehicle_costs.iter().sum();
     //println!("{}: {:?}","\t ### Solution OK ###",solution);
-    return Ok(total_cost);
+    Ok(total_cost)
 }
 

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::constants::{NCALLS, SOLUTION_SIZE};
 use crate::validity_check::{a_to_b_time, deconstruct_call};
 
-pub fn correct_overcalling(solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
+pub fn _correct_overcalling(solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
     /*
     Takes a solution where some calls occur more than twice.
     Returns a solution where calls occur no more than twice. 
@@ -33,11 +33,11 @@ pub fn correct_overcalling(solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE
             }
         } 
     }
-    return output;
+    output
 
 }
 // TODO: Make func that goes through and tracks all cars, not just one. The earliest available car should get the first available call.
-pub fn correct_pickup_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, start_upper:i32, travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
+pub fn _correct_pickup_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, start_upper:i32, travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
                              call_details : &[[i32;8usize]; NCALLS], solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
 
     // Get the 1st occurence of the call (the pick-up)
@@ -81,19 +81,19 @@ pub fn correct_pickup_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, st
 
     assert_ne!(&output, solution);
 
-    return output;
+    output
 
 }
-fn get_nth_occurrences(n_occurrence:usize, call:i32, solution:&[i32;SOLUTION_SIZE]) -> Option<usize>{
+fn _get_nth_occurrences(n_occurrence:usize, call:i32, solution:&[i32;SOLUTION_SIZE]) -> Option<usize>{
     solution.iter()
         .enumerate()
         .filter(|(_,val)| *val == &call)
         .map(|(idx,_)|idx)
         .nth(n_occurrence-1)
 }
-pub fn correct_deliver_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, end_upper:i32, travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>, solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
+pub fn _correct_deliver_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, end_upper:i32, travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>, solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
     // Get the 2nd occurence of the call (the delivery)
-    let initial_call_idx = get_nth_occurrences(2usize,call,solution).expect("\"correct_deliver_too_late(...)\": This unwrap should be unfalable, as this func is only called when the given call exists."); 
+    let initial_call_idx = _get_nth_occurrences(2usize,call,solution).expect("\"correct_deliver_too_late(...)\": This unwrap should be unfalable, as this func is only called when the given call exists."); 
     let mut call_idx = initial_call_idx;
     let mut current_time = arrival_time;
     // Find the latest possible spot where picking up the call is possible.
@@ -110,11 +110,5 @@ pub fn correct_deliver_too_late(vehicle_idx:usize, call:i32, arrival_time:i32, e
     // Then insert the desired call at the desired location. This overwrites the old call, which has been moved one step ahead.
     // Calls below this point should not be affected.
     output[call_idx] = call;
-    return output;
-}
-pub fn correct_overloaded(solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
-    todo!()
-}
-pub fn correct_pickup_not_delivered(solution :&[i32;SOLUTION_SIZE]) -> [i32;SOLUTION_SIZE]{
-    todo!()
+    output
 }
