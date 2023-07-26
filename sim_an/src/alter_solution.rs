@@ -30,7 +30,7 @@ impl SolutionPermutation<'_> {
 
         let mut best_solution = *self.current_solution;
         let mut best_solution_cost = Some(*self.current_cost);
-
+        #[allow(clippy::absurd_extreme_comparisons)] // This is here in case you set MAX_RUNTIME_IN_SECONDS to 0.
         while start.elapsed().as_secs() < MAX_RUNTIME_IN_SECONDS{
             let (new_solution, mut new_solution_cost) = match selected_idx{
                 0 => (swap_two_random_calls(0usize, &best_solution), None),
@@ -205,6 +205,8 @@ pub fn _randomly_improve_solution(
     let selected_function = function_list[distribution.sample(&mut rng)];
     let mut best_solution = selected_function(0usize,current_solution);
     let mut best_solution_cost: Option<i32> = calculate_cost(&best_solution, vehicle_details, call_details, travel_costs, node_costs);
+
+    #[allow(clippy::absurd_extreme_comparisons)] // This is here in case you set MAX_RUNTIME_IN_SECONDS to 0.
     while start.elapsed().as_secs() < MAX_RUNTIME_IN_SECONDS{
         let new_solution = selected_function(0usize,current_solution);
         let new_solution_cost= calculate_cost(&best_solution, vehicle_details, call_details, travel_costs, node_costs);
@@ -282,12 +284,12 @@ pub fn _brute_force_solve(
     todo!("\nWhat if no possible solution exists?\n");
 }
 
-struct CarInfo{
-    vehicle_idx:usize,
-    car_pos:[i32;NVEHICLES],
-    car_times:[i32;NVEHICLES]
+pub struct CarInfo{
+    pub vehicle_idx:usize,
+    pub car_pos:[i32;NVEHICLES],
+    pub car_times:[i32;NVEHICLES]
 }
-struct Info{
+pub struct Info{
     to_node:i32,
     total_time:i32,
     time_delta:i32,
@@ -296,7 +298,7 @@ struct Info{
 
 }
 impl Info{
-    fn new(call_count: i32, car_info:&CarInfo, call:i32, node_costs:&[[i32;5usize];NCALLS*NVEHICLES], call_details:&[[i32;8usize]; NCALLS],travel_costs:&HashMap<(i32,i32,i32),(i32,i32)>) -> Option<Self>{
+    pub fn new(call_count: i32, car_info:&CarInfo, call:i32, node_costs:&[[i32;5usize];NCALLS*NVEHICLES], call_details:&[[i32;8usize]; NCALLS],travel_costs:&HashMap<(i32,i32,i32),(i32,i32)>) -> Option<Self>{
         let car_pos = car_info.car_pos;
         let car_times = car_info.car_times;
         let vehicle_idx = car_info.vehicle_idx;
@@ -326,10 +328,10 @@ impl Info{
         Some(Info{to_node, total_time, time_delta, upper_bound, total_cost})
 
     }
-    fn get_info(&self) -> (Option<i32>,Option<i32>,Option<i32>, Option<i32>){
+    pub fn get_info(&self) -> (Option<i32>,Option<i32>,Option<i32>, Option<i32>){
         (Some(self.to_node), Some(self.total_time), Some(self.time_delta), Some(self.total_cost))
     }
-    fn is_faster(&self, cheapest_time_delta:Option<i32>) -> bool {
+    pub fn is_faster(&self, cheapest_time_delta:Option<i32>) -> bool {
         if self.total_time <= self.upper_bound{
             match cheapest_time_delta{
                 None => return true, // If not value, assign it.
@@ -360,7 +362,7 @@ fn calculate_cost(
         car_times[vehicle_idx] = vehicle_start;
     }
     let mut call_counter = [0;NCALLS];
-    for (_call_idx, &call) in solution.iter().enumerate(){
+    for &call in solution.iter(){
         let mut cheapest_vehicle:Option<usize> = None;
         let mut cheapest_call:Option<usize> = None;
         let mut cheapest_cost:Option<i32> = None;

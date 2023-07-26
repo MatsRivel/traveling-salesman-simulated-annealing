@@ -3,11 +3,12 @@ mod constants;
 mod validity_check;
 mod correctors;
 mod alter_solution;
+mod coordinate_generator;
 
 use constructors::{AllData, get_all_data};
 use constants::{NVEHICLES, NCALLS, SOLUTION_SIZE};
-use std::{path::Path};
-use crate::{alter_solution::{naive_solve, semi_random_improve_solution}, constants::N_THREADS};
+use std::path::Path;
+use crate::{alter_solution::{naive_solve, semi_random_improve_solution}, constants::N_THREADS, coordinate_generator::find_node_orders};
 use std::time::Instant;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
@@ -80,4 +81,8 @@ fn main(){
     let runtime2 = (start.elapsed().as_nanos() as f32) / 10f32.powf(9f32);
     println!("Total runtime: {:?}sec\nTotal Cost: ${}\nSolution:\n{:?}", runtime2, lowest_cost, best_solution);
     println!("Cost improvement: ${:?} cheaper after running for {:?}s longer", old_cost - lowest_cost, runtime2-runtime);
+
+    // Find what order nodes occur in:
+    let car_node_order = find_node_orders(&best_solution, &vehicle_details,&call_details,&travel_costs,&node_costs);
+    
 }
