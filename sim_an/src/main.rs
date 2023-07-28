@@ -4,14 +4,16 @@ mod validity_check;
 mod correctors;
 mod alter_solution;
 mod coordinate_generator;
+mod images_functions;
 
 use constructors::{AllData, get_all_data};
 use constants::{NVEHICLES, NCALLS, SOLUTION_SIZE};
+use image::RgbImage;
 use std::path::Path;
-use crate::{alter_solution::{naive_solve, semi_random_improve_solution}, constants::N_THREADS, coordinate_generator::find_node_orders};
+use crate::{alter_solution::{naive_solve, semi_random_improve_solution}, constants::{N_THREADS, NNODES}, coordinate_generator::{find_node_orders, get_node_coords}};
 use std::time::Instant;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
-
+use images_functions::{ImageSizes, make_image};
 
 fn _get_predefined_solution(predef:Vec<i32>) -> [i32;SOLUTION_SIZE] {
     let mut sol:[i32;SOLUTION_SIZE] = [0i32;SOLUTION_SIZE];
@@ -84,5 +86,28 @@ fn main(){
 
     // Find what order nodes occur in:
     let car_node_order = find_node_orders(&best_solution, &vehicle_details,&call_details,&travel_costs,&node_costs);
+    let mut flat_node_vec = Vec::<i32>::with_capacity(car_node_order[0].len() * car_node_order.len());
+    for sub_vec in car_node_order.iter() {
+        for element in sub_vec.iter(){
+            flat_node_vec.push(*element);
+        }
+    }
+    let (mut max_x, mut max_y, mut min_x, mut min_y) = (300,600,0,0);
+    let node_coords = get_node_coords(&flat_node_vec, &travel_costs, &[max_x, max_y]);
+    let mut img = RgbImage::new(max_x as u32, max_y as u32);
     
+    // Making sure to place the used nodes first so that their relative positions ar the same.
+    let other_nodes: Vec<i32> = (1i32..=(NNODES as i32)).filter(|i| !flat_node_vec.contains(i)).collect();
+    let mut all_nodes= Vec::<i32>::with_capacity(NNODES); 
+    for element in flat_node_vec{
+        all_nodes.push(element);
+    }
+    for element in other_nodes{
+        all_nodes.push(element);
+    }
+    let all_node_coords = get_node_coords(&all_nodes, &travel_costs, &[max_x, max_y]);
+
+    img = make_image(img, all_node_coords,[255u8,100u8,255u8], false);
+    img = make_image(img, node_coords,[100u8,255u8,255u8], true);
+
 }
