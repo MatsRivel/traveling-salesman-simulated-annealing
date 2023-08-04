@@ -19,4 +19,6 @@ macro_rules! rec_func {
 rec_func!(_TRAVEL_TIME_SIZE, _recursive_sum, NNODES);
 //pub const TRAVEL_TIME_SIZE_REDUNDANT: usize = NNODES*NNODES*NVEHICLES;
 pub const SOLUTION_SIZE: usize = NCALLS*2;
-
+// Image dimensions:
+pub const MAX_X: u32= 300u32;
+pub const MAX_Y: u32 = 300u32;

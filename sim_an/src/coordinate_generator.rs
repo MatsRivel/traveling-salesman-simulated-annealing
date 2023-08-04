@@ -23,7 +23,7 @@ fn coord_options_from_two_points(coord_a:[i32;2], coord_b:[i32;2], dist_a_b:i32,
 }pub fn get_node_coords(
     node_order: &Vec<i32>,
     travel_costs: &HashMap<(i32,i32,i32),(i32,i32)>,
-    map_size: &[i32;2]
+    map_size: &[u32;2]
 ) -> HashMap<i32,[i32;2]>{
     const DISTANCE_MULTIPLIER: i32 = 1;
     let mut node_coords: HashMap<i32,[i32;2]> = HashMap::new();
@@ -98,7 +98,7 @@ fn coord_options_from_two_points(coord_a:[i32;2], coord_b:[i32;2], dist_a_b:i32,
             };
             for i in 0..=1{
                 if coord[i] < 0{
-                    coord[i] += map_size[i];
+                    coord[i] += map_size[i] as i32;
                 }
             }
             if best_choice.is_none() || used_coords.contains(&best_choice.unwrap()) && !used_coords.contains(&coord){

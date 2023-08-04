@@ -11,6 +11,8 @@ itertools = "0.11.0"
 permutator = "0.4.3"
 rayon = "1.7.0"
 image = "0.24.6"
+gif = "0.12.0"
+rerun = "0.8.0"
 [[test]]
 name = "validity_check_test.rs"
 path = "src/tests/"
